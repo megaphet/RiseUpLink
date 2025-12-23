@@ -32,7 +32,29 @@ if not UPLOAD_FOLDER:
             pass
 
 app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(BASE_DIR, 'riseup.db')
+# Determine DB URI: prefer env var `DATABASE_URL` or `SQLALCHEMY_DATABASE_URI`.
+# If none provided, attempt to use a writable sqlite file in the repo; if
+# that's not writable (serverless), fall back to a tmp sqlite file, then
+# to in-memory as a last resort.
+db_uri = os.environ.get('DATABASE_URL') or os.environ.get('SQLALCHEMY_DATABASE_URI')
+if not db_uri:
+    candidate = os.path.join(BASE_DIR, 'riseup.db')
+    try:
+        # ensure we can create or open the file
+        os.makedirs(os.path.dirname(candidate), exist_ok=True)
+        with open(candidate, 'a'):
+            pass
+        db_uri = 'sqlite:///' + candidate
+    except Exception:
+        tmp_db = os.path.join(tempfile.gettempdir(), 'riseup.db')
+        try:
+            with open(tmp_db, 'a'):
+                pass
+            db_uri = 'sqlite:///' + tmp_db
+        except Exception:
+            db_uri = 'sqlite:///:memory:'
+
+app.config['SQLALCHEMY_DATABASE_URI'] = db_uri
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.config['SECRET_KEY'] = 'change-this-secret-in-production'
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
