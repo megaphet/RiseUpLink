@@ -47,6 +47,16 @@ csrf = CSRFProtect(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
+# Auto-initialize database tables when running in environments where
+# migrations are not applied (serverless deployments). Controlled by
+# `AUTO_INIT_DB` env var; set to '0' in production to disable.
+if os.environ.get('AUTO_INIT_DB', '1') != '0':
+    try:
+        with app.app_context():
+            db.create_all()
+    except Exception as _e:
+        app.logger.warning('AUTO_INIT_DB: failed to create tables: %s', _e)
+
 from models import User, YouthProfile, Document, RecommendationLetter, Verification, FieldVisit, Opportunity, Application, Notification, YouTubeVideo
 import smtplib
 from email.message import EmailMessage
