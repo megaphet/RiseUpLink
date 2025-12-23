@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="container py-4">
+  <div class="row justify-content-center">
+    <div class="col-md-8">
+      <div class="card shadow">
+        <div class="card-header bg-primary text-white">
+          <h3 class="mb-0">Complete Your Youth Profile</h3>
+        </div>
+        <div class="card-body">
+          <form method="post" aria-label="Create profile">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <h5 class="mb-3">Profile Information</h5>
+            
+            <div class="mb-3">
+              <label class="form-label" for="category">Category</label>
+              <select id="category" class="form-select" name="category" required title="Category">
+                <option value="">-- Select your category --</option>
+                <option value="Refugee">Refugee</option>
+                <option value="IDP">IDP (Internally Displaced Person)</option>
+                <option value="Vulnerable">Vulnerable Person</option>
+                <option value="PWD">PWD (Person with Disability)</option>
+                <option value="Other">Other marginalized group</option>
+              </select>
+              <small class="text-muted">Select the category that best describes your situation</small>
+            </div>
+            
+            <div class="mb-3">
+              <label class="form-label" for="country">Country</label>
+              <input id="country" class="form-control" name="country" placeholder="e.g., Uganda, Kenya, South Sudan" required title="Country">
+            </div>
+            
+            <div class="mb-3">
+              <label class="form-label" for="community">Camp/Community</label>
+              <input id="community" class="form-control" name="community" placeholder="Name of camp or community" required title="Community">
+              <small class="text-muted">Where you currently reside</small>
+            </div>
+
+            <hr class="my-4">
+
+            <h5 class="mb-3">Contact & Notification Preferences</h5>
+
+            <div class="mb-3">
+              <label class="form-label" for="whatsapp_number">WhatsApp Number (optional)</label>
+              <input id="whatsapp_number" class="form-control" name="whatsapp_number" type="tel" placeholder="+256701234567" title="WhatsApp number with country code">
+              <small class="text-muted">Include country code for best results</small>
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label">How would you like to receive application feedback?</label>
+              <div class="form-check">
+                <input class="form-check-input" type="radio" name="preferred_feedback" id="email_feedback" value="email" checked>
+                <label class="form-check-label" for="email_feedback">
+                  📧 Email (default - to {{ current_user.email }})
+                </label>
+              </div>
+              <div class="form-check">
+                <input class="form-check-input" type="radio" name="preferred_feedback" id="whatsapp_feedback" value="whatsapp">
+                <label class="form-check-label" for="whatsapp_feedback">
+                  💬 WhatsApp (faster notifications)
+                </label>
+              </div>
+              <small class="text-muted d-block mt-2">Donors will use this method to notify you about your application status</small>
+            </div>
+
+            <hr class="my-4">
+
+            <div class="d-flex gap-2">
+              <button class="btn btn-primary" type="submit">Create Profile</button>
+              <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary">Cancel</a>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <div class="alert alert-info mt-4">
+        <strong>📌 Note:</strong> You can update your contact preferences anytime from Profile & Contact Settings in the dashboard.
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

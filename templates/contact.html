@@ -1,0 +1,157 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row">
+        <div class="col-lg-8 mx-auto">
+            <h2 class="mb-4">Contact & Support</h2>
+            
+            <div class="card mb-4">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0">Need Help?</h5>
+                </div>
+                <div class="card-body">
+                    <p>If you have questions or need assistance with the RiseUp Link platform, please reach out to our support team:</p>
+                </div>
+            </div>
+
+            {% if admin_user %}
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="card border-success">
+                        <div class="card-header bg-success text-white">
+                            <h5 class="mb-0">📧 Email Support</h5>
+                        </div>
+                        <div class="card-body">
+                            <p class="mb-2"><strong>Administrator Email:</strong></p>
+                            <p><a href="mailto:{{ admin_user.email }}">{{ admin_user.email }}</a></p>
+                            <small class="text-muted">Send us an email for general inquiries, technical issues, or feedback.</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="card border-info">
+                        <div class="card-header bg-info text-white">
+                            <h5 class="mb-0">💬 WhatsApp Support</h5>
+                        </div>
+                        <div class="card-body">
+                            <p class="mb-2"><strong>Administrator WhatsApp:</strong></p>
+                            {% if admin_user.whatsapp_number %}
+                                {% set wa_number = admin_user.whatsapp_number.replace('+', '').replace(' ', '').replace('-', '') %}
+                                <p><a href="https://wa.me/{{ wa_number }}" target="_blank" rel="noopener">{{ admin_user.whatsapp_number }}</a></p>
+                                <small class="text-muted">Click to open WhatsApp chat (or scan to add contact)</small>
+                            {% else %}
+                                <p class="text-muted"><em>WhatsApp number not configured</em></p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row mt-4">
+                <div class="col-md-6">
+                    <div class="card border-warning">
+                        <div class="card-header bg-warning text-dark">
+                            <h5 class="mb-0">📱 Phone Support</h5>
+                        </div>
+                        <div class="card-body">
+                            <p class="mb-2"><strong>Administrator Phone:</strong></p>
+                            {% if admin_user.phone_number %}
+                                <p><a href="tel:{{ admin_user.phone_number }}">{{ admin_user.phone_number }}</a></p>
+                                <small class="text-muted">Call for urgent matters</small>
+                            {% else %}
+                                <p class="text-muted"><em>Phone number not configured</em></p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="card border-secondary">
+                        <div class="card-header bg-secondary text-white">
+                            <h5 class="mb-0">⏰ Response Time</h5>
+                        </div>
+                        <div class="card-body">
+                            <p>We aim to respond to all inquiries within:</p>
+                            <ul class="mb-0">
+                                <li><strong>Email:</strong> 24-48 hours</li>
+                                <li><strong>WhatsApp:</strong> 4-6 hours (weekdays)</li>
+                                <li><strong>Phone:</strong> During business hours</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="alert alert-warning">
+                <strong>No admin contact information available yet.</strong> The platform administrator hasn't configured their contact details.
+            </div>
+            {% endif %}
+
+            <div class="card mt-4 bg-light">
+                <div class="card-body">
+                    <h5 class="card-title">Common Issues</h5>
+                    <div class="accordion" id="faqAccordion">
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#faq1">
+                                    How do I reset my password?
+                                </button>
+                            </h2>
+                            <div id="faq1" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                                <div class="accordion-body">
+                                    Contact the support team via email or WhatsApp to request a password reset. For security, password resets are handled manually.
+                                </div>
+                            </div>
+                        </div>
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq2">
+                                    How do I change my contact preferences?
+                                </button>
+                            </h2>
+                            <div id="faq2" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                                <div class="accordion-body">
+                                    Log in to your account and go to <strong>Profile & Contact Settings</strong> to update your phone number, WhatsApp number, and preferred contact methods.
+                                </div>
+                            </div>
+                        </div>
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq3">
+                                    Why aren't I receiving notifications?
+                                </button>
+                            </h2>
+                            <div id="faq3" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                                <div class="accordion-body">
+                                    Make sure your contact information is up to date in your Profile Settings. If using WhatsApp, ensure your WhatsApp number includes the country code.
+                                </div>
+                            </div>
+                        </div>
+                        <div class="accordion-item">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#faq4">
+                                    How do I apply for an opportunity?
+                                </button>
+                            </h2>
+                            <div id="faq4" class="accordion-collapse collapse" data-bs-parent="#faqAccordion">
+                                <div class="accordion-body">
+                                    First, create your youth profile with all required information. Then browse opportunities and click "Apply". The donor will review your application and notify you of the status.
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-4">
+                <a href="{{ url_for('index') }}" class="btn btn-primary">Back to Home</a>
+                {% if current_user.is_authenticated %}
+                    <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">Back to Dashboard</a>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

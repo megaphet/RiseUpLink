@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+{% block content %}
+  <h2>Field Visit — Verification {{ verification.id }}</h2>
+  <p>Youth: {{ verification.youth.user.full_name if verification.youth and verification.youth.user else '—' }}</p>
+  <form method="post" aria-label="Record field visit">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="mb-3"><label class="form-label" for="location">Location</label><input id="location" class="form-control" name="location" placeholder="Visit location" required title="Location"></div>
+    <div class="mb-3"><label class="form-label" for="findings">Findings</label><textarea id="findings" class="form-control" name="findings" placeholder="Field findings" required title="Findings"></textarea></div>
+    <div class="mb-3"><label class="form-label" for="passed">Verification passed?</label>
+      <select id="passed" class="form-select" name="passed" aria-label="Verification passed">
+        <option value="yes">Yes</option>
+        <option value="no">No</option>
+      </select>
+    </div>
+    <button type="submit" class="btn btn-primary">Record Visit</button>
+  </form>
+{% endblock %}

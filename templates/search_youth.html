@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+{% block content %}
+  <h2>Search Verified Youth</h2>
+  <form method="get" class="row g-2 mb-3">
+    <div class="col-md-3"><input class="form-control" name="category" placeholder="Category"></div>
+    <div class="col-md-3"><input class="form-control" name="country" placeholder="Country"></div>
+    <div class="col-md-3"><input class="form-control" name="community" placeholder="Community/Camp"></div>
+    <div class="col-md-3"><button class="btn btn-primary" type="submit">Search</button></div>
+  </form>
+  <h4>Results</h4>
+  <ul>
+    {% for y in results %}
+      <li>
+        <strong>{{ y.full_name or y.user.full_name }}</strong> — {{ y.category }} | {{ y.country }} | {{ y.community }}
+        <ul>
+          {% for d in y.documents %}
+            <li>Doc: {{ d.type }} - <a href="{{ url_for('uploaded_file', filename=d.file_url) }}">View</a> - Validated: {{ d.validated }}</li>
+          {% endfor %}
+        </ul>
+      </li>
+    {% else %}
+      <li>No verified youth found.</li>
+    {% endfor %}
+  </ul>
+{% endblock %}

@@ -1,0 +1,59 @@
+{% extends 'base.html' %}
+{% block content %}
+  <div class="container py-4">
+    <h1>Media Gallery</h1>
+    <p class="lead">Visuals and videos that tell the RiseUp Link story.</p>
+
+    <div class="row mb-4">
+      <div class="col-md-8">
+        <div class="ratio ratio-16x9">
+          {% if main_video is defined and main_video %}
+            {% if main_video.youtube_id %}
+              <iframe src="https://www.youtube.com/embed/{{ main_video.youtube_id }}" title="Intro video" allowfullscreen></iframe>
+            {% else %}
+              <iframe src="{{ main_video.link }}" title="Intro video" allowfullscreen></iframe>
+            {% endif %}
+          {% else %}
+            <iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ" title="Intro video" allowfullscreen></iframe>
+          {% endif %}
+        </div>
+      </div>
+      <div class="col-md-4">
+        {% if main_video is defined and main_video %}
+          <h5>{{ main_video.title if main_video.title else 'Video overview' }}</h5>
+          <p>{{ main_video.description if main_video.description else 'A short explainer about the mission, verification flow, and how donors and youth interact with the platform.' }}</p>
+        {% else %}
+          <h5>Video overview</h5>
+          <p>A short explainer about the mission, verification flow, and how donors and youth interact with the platform.</p>
+        {% endif %}
+        {% if current_user.is_authenticated and current_user.is_admin %}
+          <p><a class="btn btn-sm btn-outline-primary" href="{{ url_for('admin_media') }}">Manage Media</a></p>
+        {% endif %}
+      </div>
+    </div>
+
+    <!--<div class="row g-3">
+      {% if uploads %}
+        {% for src in uploads %}
+          <div class="col-sm-6 col-md-4">
+            <img src="{{ src }}" class="img-fluid rounded shadow-sm" alt="media">
+          </div>
+        {% endfor %}
+      {% else %}
+        <div class="col-sm-6 col-md-4">
+          <img src="{{ url_for('assets_images', filename='joincommunity.jpg') }}" class="img-fluid rounded shadow-sm" alt="student 1">
+        </div>
+        <div class="col-sm-6 col-md-4">
+          <img src="{{ url_for('assets_images', filename='young-graduates.png') }}" class="img-fluid rounded shadow-sm" alt="group">
+        </div>
+        <div class="col-sm-6 col-md-4">
+          <img src="{{ url_for('assets_images', filename='young-graduates.png') }}" class="img-fluid rounded shadow-sm" alt="graduates">
+        </div>
+      {% endif %}
+    </div>-->
+
+    <div class="mt-4">
+      <p>If you have photos or videos to share for the project, upload them via the admin/media upload interface or contact the team.</p>
+    </div>
+  </div>
+{% endblock %}

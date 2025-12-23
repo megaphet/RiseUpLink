@@ -1,0 +1,38 @@
+{% extends 'base.html' %}
+{% block content %}
+  <div class="container py-4">
+    <div class="row">
+      <div class="col-md-8">
+        <h1>About RiseUp Link</h1>
+        <p class="lead">Verified Opportunity Platform for Marginalized African Graduates.</p>
+
+        <h3>Our Mission</h3>
+        <p>Empowering African youth who have graduated from high school or hold a university degree through verified access to donors and opportunities, with priority given to refugee youth, internally displaced persons (IDPs), vulnerable youth, and persons with disabilities (PWDs). We combine uploaded documents, recommendation letters and field verification so donors can identify genuine beneficiaries with confidence.</p>
+
+        <h3 class="mt-4">Problem Statement</h3>
+        <p>Many African graduates, particularly marginalized youth, lack access to verified post-secondary opportunities, while donors have no reliable way to identify eligible beneficiaries. Verification is often weak or nonexistent; as a result, genuine beneficiaries remain invisible.</p>
+
+        <h3 class="mt-4">How We Solve It</h3>
+        <ul>
+          <li>Profile creation with document and recommendation-letter upload.</li>
+          <li>Administrative review and field-team on-site verification.</li>
+          <li>Donor-facing search and filters to find verified beneficiaries.</li>
+          <li>Opportunity posting and application workflow with status dashboards.</li>
+        </ul>
+
+        <h3 class="mt-4">Hypothesis</h3>
+        <p>Confirmed post-secondary youth profiles with documents, letters of recommendation, and field verification enhance access to opportunities and allow donors to identify beneficiaries with certainty.</p>
+      </div>
+      <div class="col-md-4">
+        <div class="card mb-4">
+          <img src="{{ url_for('assets_images', filename='joincommunity.jpg') }}" class="card-img-top" alt="community">
+          <div class="card-body">
+            <h5 class="card-title">Get Involved</h5>
+            <p class="card-text">Donors, NGOs and volunteers can partner to post opportunities, fund scholarships, or help with field verification.</p>
+            <a href="{{ url_for('register') }}" class="btn btn-primary">Register</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}

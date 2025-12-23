@@ -1,0 +1,37 @@
+{
+  "users": {
+    "admin@example.com": {
+      "id": "admin@example.com",
+      "full_name": "Admin User",
+      "password": "scrypt:32768:8:1$MxHOVSigBeFX8X2Y$ba1a8cfd7912876fb97c518aa4233a190bd2149843fb2e05cde015790dd339c17c2184dec419b8d9e81ecfd62d09c2e2f4a4258a4fe5806735f852af9aef83ff",
+      "role": "admin"
+    },
+    "donor@example.com": {
+      "id": "donor@example.com",
+      "full_name": "Donor Org",
+      "password": "scrypt:32768:8:1$MMR1hV3rbMOMg6Tc$69e77e154d0fabf9cc17dd1b1abfc40c92ca282c3741665329b7f384ea84f8c2c8ed41e727a9c65e3dc74afe94aa03cb4e9ce02ec3a536e6d02ad612873a4e43",
+      "role": "donor"
+    },
+    "youth@example.com": {
+      "id": "youth@example.com",
+      "full_name": "Amina K.",
+      "password": "scrypt:32768:8:1$CiG2xoNfRWpBZk9M$e0d5330fcc5cd80ac6142727f9e0c897d21f4a6531ce0ede14171515cd8f74e7e45a03e375fb3a82f553219404e74cf1f6ad5d0fa8ef3b6e136223b64feeeb3e",
+      "role": "youth"
+    }
+  },
+  "profiles": {},
+  "opportunities": {
+    "1": {
+      "id": "1",
+      "title": "STEM Scholarship 2025",
+      "type": "Scholarship",
+      "country": "KE",
+      "category": "Refugee",
+      "description": "Scholarship for refugee youth in STEM fields",
+      "deadline": "2025-10-15",
+      "posted_by": "donor@example.com",
+      "is_active": true
+    }
+  },
+  "applications": {}
+}

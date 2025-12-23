@@ -1,0 +1,81 @@
+{% extends 'base.html' %}
+{% block content %}
+  <div class="container py-4">
+    <h2>Manage Opportunities & Applications</h2>
+    
+    {% if opportunities %}
+      {% for o in opportunities %}
+        <div class="card mb-4">
+          <div class="card-header bg-light">
+            <div class="row align-items-center">
+              <div class="col">
+                <h5 class="mb-0">{{ o.title }}</h5>
+                <small class="text-muted">Type: {{ o.type }} | Country: {{ o.country }} | Deadline: {{ o.deadline }}</small>
+              </div>
+              <div class="col-auto">
+                <a href="{{ url_for('edit_opportunity', oid=o.id) }}" class="btn btn-sm btn-outline-primary">Edit</a>
+                <form method="post" action="{{ url_for('delete_opportunity', oid=o.id) }}" class="d-inline">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Deactivate this opportunity?')">Deactivate</button>
+                </form>
+              </div>
+            </div>
+          </div>
+          <div class="card-body">
+            <p>{{ o.description }}</p>
+            <h6>Applications ({{ o.applications|length }})</h6>
+            {% if o.applications %}
+              <div class="table-responsive">
+                <table class="table table-sm">
+                  <thead>
+                    <tr>
+                      <th>ID</th>
+                      <th>Youth</th>
+                      <th>Submitted</th>
+                      <th>Status</th>
+                      <th>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for a in o.applications %}
+                      <tr>
+                        <td>{{ a.id }}</td>
+                        <td>{{ a.youth.user.full_name if a.youth and a.youth.user else '—' }}</td>
+                        <td>{{ a.submitted_at.strftime('%Y-%m-%d') }}</td>
+                        <td>
+                          <span class="badge 
+                            {% if a.status == 'Offered' %}bg-success
+                            {% elif a.status == 'NotSelected' %}bg-danger
+                            {% elif a.status == 'UnderReview' %}bg-warning
+                            {% else %}bg-secondary{% endif %}">
+                            {{ a.status }}
+                          </span>
+                        </td>
+                        <td>
+                          <form method="post" action="{{ url_for('donor_update_application', aid=a.id) }}" class="d-inline">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                            <label class="visually-hidden" for="status_{{ a.id }}">Status</label>
+                            <select id="status_{{ a.id }}" name="status" class="form-select form-select-sm d-inline-block w-auto">
+                              <option value="UnderReview" {% if a.status == 'UnderReview' %}selected{% endif %}>Under Review</option>
+                              <option value="Offered" {% if a.status == 'Offered' %}selected{% endif %}>Offered</option>
+                              <option value="NotSelected" {% if a.status == 'NotSelected' %}selected{% endif %}>Not Selected</option>
+                            </select>
+                            <button type="submit" class="btn btn-xs btn-primary">Update</button>
+                          </form>
+                        </td>
+                      </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            {% else %}
+              <p class="text-muted">No applications yet.</p>
+            {% endif %}
+          </div>
+        </div>
+      {% endfor %}
+    {% else %}
+      <div class="alert alert-info">No opportunities posted yet. <a href="{{ url_for('post_opportunity') }}">Post one now</a>.</div>
+    {% endif %}
+  </div>
+{% endblock %}

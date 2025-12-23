@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+{% block content %}
+  <div class="container py-4">
+    <h1>Support Contacts</h1>
+    <p class="lead">Edit public support contact information.</p>
+
+    <form method="post">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="mb-3">
+        <label class="form-label">Support Email</label>
+        <input name="support_email" class="form-control" value="{{ support.email }}">
+      </div>
+      <div class="mb-3">
+        <label class="form-label">Support Phone</label>
+        <input name="support_phone" class="form-control" value="{{ support.phone }}">
+      </div>
+      <button class="btn btn-primary" type="submit">Save</button>
+    </form>
+  </div>
+{% endblock %}

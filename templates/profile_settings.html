@@ -1,0 +1,122 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">Profile & Contact Settings</h4>
+                </div>
+                <div class="card-body">
+                                        <form method="post" action="{{ url_for('profile_settings') }}" class="needs-validation">
+                                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <div class="mb-3">
+                            <label for="full_name" class="form-label">Full Name</label>
+                            <input type="text" class="form-control" value="{{ current_user.full_name }}" disabled>
+                            <small class="text-muted">Your name cannot be changed here</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="email" class="form-label">Email Address</label>
+                            <input type="email" class="form-control" value="{{ current_user.email }}" disabled>
+                            <small class="text-muted">Your email address cannot be changed here</small>
+                        </div>
+
+                        <hr class="my-4">
+                        
+                        <h5 class="mb-3">Contact Information</h5>
+
+                        <div class="mb-3">
+                            <label for="phone_number" class="form-label">Phone Number</label>
+                            <input type="tel" name="phone_number" id="phone_number" class="form-control" 
+                                   value="{{ current_user.phone_number or '' }}" placeholder="+256701234567">
+                            <small class="text-muted">Include country code for WhatsApp integration</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="whatsapp_number" class="form-label">WhatsApp Number</label>
+                            <input type="tel" name="whatsapp_number" id="whatsapp_number" class="form-control" 
+                                   value="{{ current_user.whatsapp_number or '' }}" placeholder="+256701234567">
+                            <small class="text-muted">Can be same as phone number or different</small>
+                        </div>
+
+                        <hr class="my-4">
+
+                        <h5 class="mb-3">Communication Preferences</h5>
+
+                        <div class="mb-3">
+                            <label class="form-label">Preferred Contact Method</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="preferred_contact" id="email_pref" 
+                                       value="email" {% if current_user.preferred_contact == 'email' %}checked{% endif %}>
+                                <label class="form-check-label" for="email_pref">
+                                    Email
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="preferred_contact" id="whatsapp_pref" 
+                                       value="whatsapp" {% if current_user.preferred_contact == 'whatsapp' %}checked{% endif %}>
+                                <label class="form-check-label" for="whatsapp_pref">
+                                    WhatsApp
+                                </label>
+                            </div>
+                            <small class="text-muted d-block mt-2">We'll use this method to contact you about your account</small>
+                        </div>
+
+                        {% if current_user.role == 'youth' and current_user.youth_profile %}
+                        <hr class="my-4">
+                        
+                        <h5 class="mb-3">Application Feedback Preference</h5>
+                        <p class="text-muted small">How you'd like donors to notify you about application status updates:</p>
+
+                        <div class="mb-3">
+                            <label class="form-label">Preferred Feedback Method</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="preferred_feedback" id="email_feedback" 
+                                       value="email" {% if current_user.youth_profile.preferred_feedback == 'email' %}checked{% endif %}>
+                                <label class="form-check-label" for="email_feedback">
+                                    Email
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="preferred_feedback" id="whatsapp_feedback" 
+                                       value="whatsapp" {% if current_user.youth_profile.preferred_feedback == 'whatsapp' %}checked{% endif %}>
+                                <label class="form-check-label" for="whatsapp_feedback">
+                                    WhatsApp
+                                </label>
+                            </div>
+                            <small class="text-muted d-block mt-2">Donors will use this method to notify you about your application status</small>
+                        </div>
+                        {% endif %}
+
+                        <hr class="my-4">
+
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">Save Changes</button>
+                            <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">Cancel</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card mt-4">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0">How We Use Your Information</h5>
+                </div>
+                <div class="card-body">
+                    <ul>
+                        <li><strong>Email:</strong> For platform notifications, application updates, and important announcements</li>
+                        <li><strong>Phone Number:</strong> For WhatsApp notifications and verification purposes</li>
+                        <li><strong>WhatsApp Number:</strong> For quick notifications about application status and opportunities</li>
+                        <li><strong>Preferred Contact Method:</strong> We'll use this to reach you about account matters</li>
+                        {% if current_user.role == 'youth' %}
+                        <li><strong>Application Feedback Preference:</strong> Donors will use this to notify you about your application status</li>
+                        {% endif %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

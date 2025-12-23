@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+{% block content %}
+  <h2>Upload Documents & Recommendation</h2>
+  <p>Upload ID or transcript documents and recommendation letters.</p>
+  <form method="post" enctype="multipart/form-data" action="{{ url_for('upload_documents') }}" aria-label="Upload documents">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="mb-3">
+      <label class="form-label" for="doc_type">Document type</label>
+      <input id="doc_type" class="form-control" name="doc_type" placeholder="e.g., ID, Transcript" required title="Document type">
+    </div>
+    <div class="mb-3">
+      <label class="form-label" for="document">Choose file</label>
+      <input id="document" class="form-control" name="document" type="file" required title="Choose file">
+    </div>
+    <button class="btn btn-primary" type="submit">Upload Document</button>
+  </form>
+
+  <hr>
+  <h4>Upload Recommendation Letter</h4>
+  <form method="post" enctype="multipart/form-data" action="{{ url_for('upload_recommendation') }}" aria-label="Upload recommendation">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="mb-3"><label class="form-label" for="issuer">Issuer name</label><input id="issuer" class="form-control" name="issuer" placeholder="Issuer full name"></div>
+    <div class="mb-3"><label class="form-label" for="issuer_role">Issuer role</label><input id="issuer_role" class="form-control" name="issuer_role" placeholder="Issuer role"></div>
+    <div class="mb-3"><label class="form-label" for="contact">Contact</label><input id="contact" class="form-control" name="contact" placeholder="Phone or email"></div>
+    <div class="mb-3"><label class="form-label" for="recommendation">File</label><input id="recommendation" class="form-control" name="recommendation" type="file" required></div>
+    <button class="btn btn-primary" type="submit">Upload Recommendation</button>
+  </form>
+
+  <hr>
+  <h4>Your Documents</h4>
+  <ul>
+    {% for d in docs %}
+      <li>{{ d.type }} - <a href="{{ url_for('uploaded_file', filename=d.file_url) }}" target="_blank">View</a> - Validated: {{ d.validated }}</li>
+    {% else %}
+      <li>No documents uploaded yet.</li>
+    {% endfor %}
+  </ul>
+
+  <h4>Recommendations</h4>
+  <ul>
+    {% for r in recs %}
+      <li>{{ r.issuer_name }} - <a href="{{ url_for('uploaded_file', filename=r.file_url) }}" target="_blank">View</a> - Validated: {{ r.validated }}</li>
+    {% else %}
+      <li>No recommendations uploaded yet.</li>
+    {% endfor %}
+  </ul>
+
+  <form method="post" action="{{ url_for('submit_verification') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button class="btn btn-success" type="submit">Submit for Verification</button>
+  </form>
+
+{% endblock %}

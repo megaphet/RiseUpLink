@@ -1,0 +1,11 @@
+{% extends 'base.html' %}
+{% block content %}
+  <h2>Admin Reports</h2>
+  <ul>
+    <li>Total youth profiles: {{ total_youth }}</li>
+    <li>Total verified: {{ total_verified }}</li>
+    <li>Total pending verifications: {{ total_pending }}</li>
+    <li>Total opportunities: {{ total_opps }}</li>
+    <li>Total applications: {{ total_apps }}</li>
+  </ul>
+{% endblock %}

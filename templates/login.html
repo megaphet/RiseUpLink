@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+{% block content %}
+  <h2>Login</h2>
+  <form method="post" aria-label="Login form">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="next" value="{{ request.args.get('next', '') }}">
+    <div class="mb-3">
+      <label class="form-label" for="email">Email</label>
+      <input id="email" class="form-control" name="email" type="email" placeholder="you@example.com" required title="Email address">
+    </div>
+    <div class="mb-3">
+      <label class="form-label" for="password">Password</label>
+      <input id="password" class="form-control" name="password" type="password" placeholder="Your password" required title="Password">
+    </div>
+    <button type="submit" class="btn btn-primary">Login</button>
+  </form>
+{% endblock %}

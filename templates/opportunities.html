@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+{% block content %}
+  <h2>Opportunities</h2>
+  <form method="get" class="row g-2 mb-3">
+    <div class="col-md-3"><input class="form-control" name="type" placeholder="Type (e.g., Scholarship)"></div>
+    <div class="col-md-3"><input class="form-control" name="country" placeholder="Country"></div>
+    <div class="col-md-3"><input class="form-control" name="category" placeholder="Category target"></div>
+    <div class="col-md-3"><button class="btn btn-secondary" type="submit">Filter</button></div>
+  </form>
+
+  {% if opportunities %}
+    <div class="row">
+      {% for o in opportunities %}
+        <div class="col-md-6 mb-3">
+          <div class="card">
+            <div class="card-body">
+              <h5 class="card-title">{{ o.title }}</h5>
+              <p class="card-text">{{ o.description }}</p>
+              <p class="text-muted">Type: {{ o.type }} | Country: {{ o.country }} | Target: {{ o.category_target }}</p>
+              {% if current_user.is_authenticated and current_user.role == 'youth' %}
+                {% set app = applications_map.get(o.id) if applications_map is defined else None %}
+                {% if app %}
+                  <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">Applied (Status: "{{ app.status }}")</a>
+                {% else %}
+                  <form method="post" action="{{ url_for('apply_opportunity', oid=o.id) }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button class="btn btn-primary" type="submit">Apply</button>
+                  </form>
+                {% endif %}
+              {% else %}
+                <a href="{{ url_for('login_prompt', next=request.url) }}" class="btn btn-primary">Apply</a>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  {% else %}
+    <p>No opportunities available.</p>
+  {% endif %}
+{% endblock %}

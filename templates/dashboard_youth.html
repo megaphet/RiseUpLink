@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+{% block content %}
+  <h2>Your Dashboard</h2>
+  {% if profile %}
+    <div class="row">
+      <div class="col-md-8">
+        <p><strong>Category:</strong> {{ profile.category }} | <strong>Country:</strong> {{ profile.country }} | <strong>Community:</strong> {{ profile.community }}</p>
+        {% set has_docs = profile.documents|length > 0 %}
+        <p>
+          {% if has_docs %}
+            <a class="btn btn-secondary" href="{{ url_for('upload_documents') }}">Manage Documents / Recommendations</a>
+          {% else %}
+            <a class="btn btn-secondary" href="{{ url_for('upload_documents') }}">Upload Documents / Recommendations</a>
+          {% endif %}
+          <a class="btn btn-outline-secondary ms-2" href="{{ url_for('profile_settings') }}">Profile Settings</a>
+          <a class="btn btn-outline-primary ms-2" href="{{ url_for('list_notifications') }}">Notifications ({{ notifications|length if notifications is defined else 0 }})</a>
+        </p>
+        <h4>Recent Applications</h4>
+        <ul>
+          {% for a in applications %}
+            <li>Opportunity: {{ a.opportunity.title }} — Status: {{ a.status }}</li>
+          {% else %}
+            <li>No applications yet.</li>
+          {% endfor %}
+        </ul>
+      </div>
+      <div class="col-md-4">
+        <h5>Your Profile</h5>
+        <p class="small">Member since: {{ current_user.created_at.strftime('%Y-%m-%d') if current_user.created_at else 'N/A' }}</p>
+        <h5 class="mt-3">Recent Opportunities</h5>
+        <ul class="small">
+          {% for o in recent_opps %}
+            <li><a href="{{ url_for('list_opportunities') }}#opp-{{ o.id }}">{{ o.title }}</a></li>
+          {% else %}
+            <li>No opportunities available.</li>
+          {% endfor %}
+        </ul>
+        <h5 class="mt-3">Recent Notifications</h5>
+        <ul class="small">
+          {% for n in notifications %}
+            <li class="mb-1">{% if not n.is_read %}<strong>{% endif %}{{ n.title }}{% if not n.is_read %}</strong>{% endif %} — {{ n.created_at.strftime('%Y-%m-%d') }}</li>
+          {% else %}
+            <li>No recent notifications.</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  {% else %}
+    <p>You haven't created a profile yet. <a href="{{ url_for('create_profile') }}">Create one now</a></p>
+  {% endif %}
+  
+{% endblock %}

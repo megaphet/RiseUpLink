@@ -1,0 +1,10 @@
+{% extends 'base.html' %}
+{% block content %}
+  <h2>Sign in to Apply</h2>
+  <p>Please sign in so you can keep track of your opportunities and applications. You can either log in or register if you are new here.</p>
+  <div class="d-flex gap-2 mt-3">
+    <a href="{{ url_for('login', next=next) }}" class="btn btn-primary">Log in</a>
+    <a href="{{ url_for('register', next=next) }}" class="btn btn-outline-secondary">Register</a>
+    <a href="{{ url_for('list_opportunities') }}" class="btn btn-link">Cancel</a>
+  </div>
+{% endblock %}

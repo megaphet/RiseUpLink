@@ -1,0 +1,102 @@
+{% extends 'base.html' %}
+{% block content %}
+  <div class="container py-4">
+    <h1>Admin Dashboard — Platform Overview</h1>
+    <p class="lead">Quick access to platform management and recent activity.</p>
+
+    <div class="row g-3 mb-4">
+      <div class="col-sm-6 col-md-3">
+        <a href="{{ url_for('admin_manage_users') }}" class="card h-100 text-decoration-none text-dark">
+          <div class="card-body">
+            <h5 class="card-title">Manage Users</h5>
+            <p class="card-text">Create, edit, or deactivate user accounts.</p>
+          </div>
+        </a>
+      </div>
+      <div class="col-sm-6 col-md-3">
+        <a href="{{ url_for('admin_recommendations') }}" class="card h-100 text-decoration-none text-dark">
+          <div class="card-body">
+            <h5 class="card-title">Recommendations</h5>
+            <p class="card-text">Review and manage recommendations.</p>
+          </div>
+        </a>
+      </div>
+      <div class="col-sm-6 col-md-3">
+        <a href="{{ url_for('admin_media') }}" class="card h-100 text-decoration-none text-dark">
+          <div class="card-body">
+            <h5 class="card-title">Media</h5>
+            <p class="card-text">Upload, edit, and remove images/videos.</p>
+          </div>
+        </a>
+      </div>
+      <div class="col-sm-6 col-md-3">
+        <a href="{{ url_for('admin_contacts') }}" class="card h-100 text-decoration-none text-dark">
+          <div class="card-body">
+            <h5 class="card-title">Contact</h5>
+            <p class="card-text">Manage support & platform contacts.</p>
+          </div>
+        </a>
+      </div>
+
+      <div class="col-sm-6 col-md-3">
+        <a href="{{ url_for('admin_features') }}" class="card h-100 text-decoration-none text-dark">
+          <div class="card-body">
+            <h5 class="card-title">Features</h5>
+            <p class="card-text">Toggle or configure platform features.</p>
+          </div>
+        </a>
+      </div>
+      <div class="col-sm-6 col-md-3">
+        <a href="{{ url_for('admin_verifications') }}" class="card h-100 text-decoration-none text-dark">
+          <div class="card-body">
+            <h5 class="card-title">Verifications</h5>
+            <p class="card-text">Review youth verification requests.</p>
+          </div>
+        </a>
+      </div>
+      <div class="col-sm-6 col-md-3">
+        <a href="{{ url_for('admin_opportunities') }}" class="card h-100 text-decoration-none text-dark">
+          <div class="card-body">
+            <h5 class="card-title">Opportunities</h5>
+            <p class="card-text">Approve or edit posted opportunities.</p>
+          </div>
+        </a>
+      </div>
+      <div class="col-sm-6 col-md-3">
+        <a href="{{ url_for('admin_reports') }}" class="card h-100 text-decoration-none text-dark">
+          <div class="card-body">
+            <h5 class="card-title">Reports</h5>
+            <p class="card-text">View platform usage and reports.</p>
+          </div>
+        </a>
+      </div>
+    </div>
+
+    <h3>Recent Verifications</h3>
+    <table class="table">
+      <thead><tr><th>ID</th><th>Youth</th><th>Status</th><th>Started</th><th>Action</th></tr></thead>
+      <tbody>
+        {% for v in verifications %}
+          <tr>
+            <td>{{ v.id }}</td>
+            <td>{{ v.youth.user.full_name if v.youth and v.youth.user else '—' }}</td>
+            <td>{{ v.status }}</td>
+            <td>{{ v.started_at }}</td>
+            <td>
+              <form method="post" action="{{ url_for('admin_verify', vid=v.id, action='approve') }}" style="display:inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button class="btn btn-sm btn-success">Approve (to field)</button>
+              </form>
+              <form method="post" action="{{ url_for('admin_verify', vid=v.id, action='reject') }}" style="display:inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button class="btn btn-sm btn-danger">Reject</button>
+              </form>
+            </td>
+          </tr>
+        {% else %}
+          <tr><td colspan="5">No verifications yet.</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}

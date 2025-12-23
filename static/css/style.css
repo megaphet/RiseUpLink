@@ -1,0 +1,22 @@
+/* Basic custom styles for RiseUp Link pages */
+body {
+  background-color: #f8fafc;
+}
+.hero {
+  background: linear-gradient(180deg, rgba(13,110,253,0.06), rgba(255,255,255,0));
+  border-radius: 6px;
+}
+.hero h1 {
+  font-weight: 700;
+}
+.card h5 {
+  font-weight: 600;
+}
+/* Media gallery tweaks */
+.img-fluid {
+  max-height: 220px;
+  object-fit: cover;
+}
+@media (max-width: 576px) {
+  .hero { padding: 1.25rem; }
+}

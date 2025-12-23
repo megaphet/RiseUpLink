@@ -1,0 +1,14 @@
+{% extends 'base.html' %}
+{% block content %}
+  <h2>Post Opportunity</h2>
+  <form method="post" aria-label="Post opportunity">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="mb-3"><label class="form-label" for="title">Title</label><input id="title" class="form-control" name="title" placeholder="Opportunity title" required></div>
+    <div class="mb-3"><label class="form-label" for="type">Type</label><input id="type" class="form-control" name="type" placeholder="Scholarship, Internship" required></div>
+    <div class="mb-3"><label class="form-label" for="country">Country</label><input id="country" class="form-control" name="country" placeholder="Country" required></div>
+    <div class="mb-3"><label class="form-label" for="category">Category Target</label><input id="category" class="form-control" name="category" placeholder="Target category" required></div>
+    <div class="mb-3"><label class="form-label" for="deadline">Deadline (YYYY-MM-DD)</label><input id="deadline" class="form-control" name="deadline" placeholder="YYYY-MM-DD" required></div>
+    <div class="mb-3"><label class="form-label" for="description">Description</label><textarea id="description" class="form-control" name="description" placeholder="Opportunity description" required></textarea></div>
+    <button class="btn btn-primary" type="submit">Post</button>
+  </form>
+{% endblock %}

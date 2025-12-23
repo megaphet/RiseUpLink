@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+{% block content %}
+  <div class="container py-4">
+    <h1>Manage Opportunities</h1>
+    <p class="lead">List of all opportunities. Activate or deactivate as needed.</p>
+
+    <table class="table">
+      <thead><tr><th>ID</th><th>Title</th><th>Posted</th><th>Country</th><th>Active</th><th>Actions</th></tr></thead>
+      <tbody>
+        {% for o in opportunities %}
+          <tr>
+            <td>{{ o.id }}</td>
+            <td>{{ o.title }}</td>
+            <td>{{ o.posted_at }}</td>
+            <td>{{ o.country }}</td>
+            <td>{{ 'Yes' if o.is_active else 'No' }}</td>
+            <td>
+              <form method="post" class="d-inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="opportunity_id" value="{{ o.id }}">
+                {% if o.is_active %}
+                  <input type="hidden" name="action" value="deactivate">
+                  <button class="btn btn-sm btn-warning" type="submit">Deactivate</button>
+                {% else %}
+                  <input type="hidden" name="action" value="activate">
+                  <button class="btn btn-sm btn-success" type="submit">Activate</button>
+                {% endif %}
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}

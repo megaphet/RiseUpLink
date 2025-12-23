@@ -1,0 +1,43 @@
+{% extends 'base.html' %}
+{% block content %}
+  <div class="container py-4">
+    <h1>Manage Users</h1>
+    <p class="lead">List of all users. Update roles or delete accounts.</p>
+
+    <table class="table">
+      <thead><tr><th>ID</th><th>Name</th><th>Email</th><th>Role</th><th>Joined</th><th>Actions</th></tr></thead>
+      <tbody>
+        {% for u in users %}
+          <tr>
+            <td>{{ u.id }}</td>
+            <td>{{ u.full_name or '—' }}</td>
+            <td>{{ u.email }}</td>
+            <td>{{ u.role }}</td>
+            <td>{{ u.created_at }}</td>
+            <td>
+              <form method="post" class="d-inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="user_id" value="{{ u.id }}">
+                <select name="role" class="form-select form-select-sm d-inline" style="width:auto; display:inline-block;">
+                  <option value="admin" {% if u.role=='admin' %}selected{% endif %}>admin</option>
+                  <option value="donor" {% if u.role=='donor' %}selected{% endif %}>donor</option>
+                  <option value="youth" {% if u.role=='youth' %}selected{% endif %}>youth</option>
+                  <option value="field" {% if u.role=='field' %}selected{% endif %}>field</option>
+                </select>
+                <input type="hidden" name="action" value="update_role">
+                <button class="btn btn-sm btn-primary" type="submit">Save</button>
+              </form>
+
+              <form method="post" class="d-inline ms-1">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="user_id" value="{{ u.id }}">
+                <input type="hidden" name="action" value="delete">
+                <button class="btn btn-sm btn-danger" type="submit" onclick="return confirm('Delete this user?')">Delete</button>
+              </form>
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+{% endblock %}

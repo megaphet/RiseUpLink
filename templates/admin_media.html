@@ -1,0 +1,130 @@
+{% extends 'base.html' %}
+{% block content %}
+  <div class="container py-4">
+    <h1>Admin Media Management</h1>
+    <p class="lead">Upload images/videos and manage existing media and YouTube videos.</p>
+
+    <form method="post" enctype="multipart/form-data" class="mb-3">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="mb-3">
+        <label for="media" class="form-label">Choose file</label>
+        <input class="form-control" type="file" id="media" name="media" accept="image/*,video/*">
+      </div>
+      <div class="mb-3">
+        <label for="title" class="form-label">Title (optional)</label>
+        <input class="form-control" type="text" id="title" name="title">
+      </div>
+      <div class="mb-3">
+        <label for="description" class="form-label">Description (optional)</label>
+        <textarea class="form-control" id="description" name="description" rows="2"></textarea>
+      </div>
+      <button class="btn btn-primary" type="submit">Upload</button>
+    </form>
+
+    <hr>
+    <h4>Add YouTube Video</h4>
+    <form method="post" action="{{ url_for('admin_add_video') }}" class="mb-4 row g-2">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="col-md-4">
+        <input name="title" class="form-control" placeholder="Title">
+      </div>
+      <div class="col-md-5">
+        <input name="description" class="form-control" placeholder="Description">
+      </div>
+      <div class="col-md-3 input-group">
+        <input name="link" class="form-control" placeholder="YouTube link">
+        <button class="btn btn-primary" type="submit">Add</button>
+      </div>
+    </form>
+
+    <h4 class="mt-4">Existing uploads</h4>
+    <div class="row g-3">
+      {% for item in uploads %}
+        {% if item.filename is defined %}
+          {% set fname = item.filename %}
+          {% set title = item.title|default('') %}
+          {% set desc = item.description|default('') %}
+        {% else %}
+          {% set fname = item %}
+          {% set title = '' %}
+          {% set desc = '' %}
+        {% endif %}
+
+        <div class="col-sm-6 col-md-3">
+          <div class="card h-100">
+            <img src="{{ url_for('uploaded_file', filename=fname) }}" class="card-img-top img-fluid" alt="{{ fname }}">
+            <div class="card-body">
+              <h6 class="card-title">{{ title if title else fname }}</h6>
+              <p class="card-text small text-muted">{{ desc }}</p>
+
+              <form method="post" action="{{ url_for('admin_update_media', filename=fname) }}" class="mb-2">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="mb-2">
+                  <label class="form-label">Title</label>
+                  <input name="title" class="form-control form-control-sm" value="{{ title }}">
+                </div>
+                <div class="mb-2">
+                  <label class="form-label">Description</label>
+                  <input name="description" class="form-control form-control-sm" value="{{ desc }}">
+                </div>
+                <button class="btn btn-sm btn-primary" type="submit">Save</button>
+              </form>
+
+              <form action="{{ url_for('delete_media', filename=fname) }}" method="post" style="display:inline">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button class="btn btn-sm btn-danger" type="submit">Delete</button>
+              </form>
+            </div>
+          </div>
+        </div>
+      {% else %}
+        <div class="col-12">
+          <p>No uploads yet.</p>
+        </div>
+      {% endfor %}
+    </div>
+
+    {% if youtube_videos is defined %}
+      <h4 class="mt-5">YouTube Videos</h4>
+      <div class="list-group">
+        {% for vid in youtube_videos %}
+          <div class="list-group-item">
+            <div class="d-flex w-100 justify-content-between">
+              <h5 class="mb-1">{{ vid.title }}</h5>
+              <small class="text-muted">ID: {{ vid.id }}</small>
+            </div>
+            <p class="mb-1">{{ vid.description }}</p>
+            <a href="{{ vid.link }}" target="_blank" class="mb-2 d-block">{{ vid.link }}</a>
+
+            <form method="post" action="{{ url_for('admin_update_video', vid=vid.id) }}" class="row g-2">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <div class="col-md-4">
+                <input name="title" class="form-control form-control-sm" value="{{ vid.title }}" placeholder="Title">
+              </div>
+              <div class="col-md-5">
+                <input name="description" class="form-control form-control-sm" value="{{ vid.description }}" placeholder="Description">
+              </div>
+              <div class="col-md-3 input-group">
+                <input name="link" class="form-control form-control-sm" value="{{ vid.link }}" placeholder="YouTube link">
+                <button class="btn btn-sm btn-primary" type="submit">Save</button>
+              </div>
+            </form>
+
+            <form action="{{ url_for('delete_video', vid=vid.id) }}" method="post" class="mt-2">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button class="btn btn-sm btn-danger" type="submit">Delete Video</button>
+            </form>
+            {% if vid.is_main %}
+              <span class="badge bg-success mt-2">Main</span>
+            {% else %}
+              <form action="{{ url_for('admin_mark_main', vid=vid.id) }}" method="post" class="mt-2">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button class="btn btn-sm btn-outline-primary" type="submit">Make Main</button>
+              </form>
+            {% endif %}
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  </div>
+{% endblock %}

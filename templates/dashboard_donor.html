@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+{% block content %}
+  <div class="container py-4">
+    <h2>Donor Dashboard</h2>
+    <p class="mb-3">
+      <a class="btn btn-primary" href="{{ url_for('post_opportunity') }}">+ Post New Opportunity</a>
+      <a class="btn btn-info" href="{{ url_for('donor_applications') }}">Manage Opportunities & Applications</a>
+    </p>
+
+    <h4>Your Posted Opportunities ({{ opportunities|length }})</h4>
+    {% if opportunities %}
+      <div class="row g-3">
+        {% for o in opportunities %}
+          <div class="col-md-6">
+            <div class="card">
+              <div class="card-body">
+                <h5 class="card-title">{{ o.title }}</h5>
+                <p class="card-text text-muted">
+                  <small>
+                    <strong>Type:</strong> {{ o.type }} | 
+                    <strong>Country:</strong> {{ o.country }} | 
+                    <strong>Category:</strong> {{ o.category_target }}
+                  </small>
+                </p>
+                <p class="card-text">
+                  <small>{{ o.description[:100] }}...</small>
+                </p>
+                <p>
+                  <span class="badge {% if o.is_active %}bg-success{% else %}bg-secondary{% endif %}">
+                    {% if o.is_active %}Active{% else %}Inactive{% endif %}
+                  </span>
+                  <span class="badge bg-info">{{ o.applications|length }} Application(s)</span>
+                </p>
+                <p class="mb-0">
+                  <small><strong>Deadline:</strong> {{ o.deadline }}</small>
+                </p>
+              </div>
+              <div class="card-footer bg-light">
+                <a href="{{ url_for('edit_opportunity', oid=o.id) }}" class="btn btn-sm btn-outline-primary">Edit</a>
+                <form method="post" action="{{ url_for('delete_opportunity', oid=o.id) }}" class="d-inline">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Deactivate this opportunity?')">Deactivate</button>
+                </form>
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div class="alert alert-info">
+        You haven't posted any opportunities yet. <a href="{{ url_for('post_opportunity') }}">Post one now</a>.
+      </div>
+    {% endif %}
+
+    <hr class="my-5">
+
+    <h4>Quick Links</h4>
+    <ul>
+      <li><a href="{{ url_for('donor_applications') }}">View all opportunities and manage applications</a></li>
+      <li><a href="{{ url_for('donor_search_youth') }}">Search verified youth beneficiaries</a></li>
+      <li><a href="{{ url_for('dashboard') }}">Back to dashboard</a></li>
+    </ul>
+  </div>
+{% endblock %}

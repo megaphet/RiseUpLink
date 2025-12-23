@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+{% block content %}
+  <div class="container py-4">
+    <h1>Edit Opportunity</h1>
+    <form method="post" class="row">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      <div class="col-md-8">
+        <div class="mb-3">
+          <label for="title" class="form-label">Title</label>
+          <input type="text" class="form-control" id="title" name="title" value="{{ opportunity.title }}" required>
+        </div>
+        <div class="mb-3">
+          <label for="type" class="form-label">Type</label>
+          <input type="text" class="form-control" id="type" name="type" value="{{ opportunity.type }}" placeholder="Scholarship, Internship, Mentorship, Vocational">
+        </div>
+        <div class="mb-3">
+          <label for="country" class="form-label">Country</label>
+          <input type="text" class="form-control" id="country" name="country" value="{{ opportunity.country }}">
+        </div>
+        <div class="mb-3">
+          <label for="category" class="form-label">Target Category</label>
+          <input type="text" class="form-control" id="category" name="category" value="{{ opportunity.category_target }}" placeholder="Refugee, IDP, Vulnerable, PWD">
+        </div>
+        <div class="mb-3">
+          <label for="deadline" class="form-label">Deadline</label>
+          <input type="date" class="form-control" id="deadline" name="deadline" value="{{ opportunity.deadline }}">
+        </div>
+        <div class="mb-3">
+          <label for="description" class="form-label">Description</label>
+          <textarea class="form-control" id="description" name="description" rows="6">{{ opportunity.description }}</textarea>
+        </div>
+        <button type="submit" class="btn btn-primary">Save Changes</button>
+        <a href="{{ url_for('donor_applications') }}" class="btn btn-secondary">Cancel</a>
+      </div>
+    </form>
+  </div>
+{% endblock %}

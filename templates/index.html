@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+{% block content %}
+  <section class="hero py-5">
+    <div class="container">
+      <div class="row align-items-center">
+        <div class="col-lg-6">
+          <h1 class="display-5">RiseUp Link</h1>
+          <p class="lead mb-4">A verified-opportunity platform connecting marginalized African graduates with donors, scholarships, internships and training — powered by document and field verification.</p>
+          <p>
+            <a class="btn btn-primary me-2" href="{{ url_for('list_opportunities') }}">Browse Opportunities</a>
+            <a class="btn btn-outline-secondary" href="{{ url_for('about') }}">Learn More</a>
+          </p>
+          <ul class="mt-4">
+            <li><strong>Priority groups:</strong> Refugee youth, IDPs, vulnerable youth, persons with disabilities.</li>
+            <li><strong>Verification:</strong> Document + recommendation + field verification for trusted matches.</li>
+          </ul>
+        </div>
+        <div class="col-lg-6 text-center">
+          <img src="{{ url_for('assets_images', filename='young-graduates.png') }}" alt="Young graduates" class="img-fluid rounded shadow-lg">
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="container py-4">
+    <div class="row">
+      <div class="col-md-8">
+        <h2>Why RiseUp Link</h2>
+        <p>Many African graduates — especially those who are refugees, internally displaced, or living in underserved communities — are invisible to donors and opportunity providers. RiseUp Link provides a trusted way to verify beneficiaries and present them to donors and NGOs with transparency and dignity.</p>
+        <h3 class="mt-4">Problem Statement</h3>
+        <p>There is no reliable, verified platform linking post-high-school youth to scholarships, internships, vocational training and mentorships. Verification is weak or absent, so donors cannot reliably identify genuine beneficiaries.</p>
+      </div>
+      <div class="col-md-4">
+        <div class="card bg-light mb-3">
+          <div class="card-body">
+            <h5 class="card-title">Platform Mission</h5>
+            <p class="card-text">Empower marginalized African youth by providing verified access to donors and opportunities, prioritizing equity, transparency and field-verified authenticity.</p>
+            <a href="{{ url_for('features') }}" class="btn btn-sm btn-primary">See Features</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+{% endblock %}
