@@ -1140,6 +1140,8 @@ def send_email(to_addr: str, subject: str, body: str):
         server.send_message(msg)
         server.quit()
         app.logger.info('Email sent to %s', to_addr)
+    except Exception as exc:
+        app.logger.warning('Failed to send email to %s: %s', to_addr, exc)
 
 
 # Global exception logger: record full tracebacks to the application logs
@@ -1151,8 +1153,6 @@ def handle_uncaught_exception(e):
     except Exception:
         pass
     return "Internal Server Error", 500
-    except Exception as exc:
-        app.logger.warning('Failed to send email to %s: %s', to_addr, exc)
 
 if __name__ == '__main__':
     with app.app_context():
