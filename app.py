@@ -1,4 +1,5 @@
 import os
+import tempfile
 from datetime import datetime
 from flask import Flask, render_template, request, redirect, url_for, flash, send_from_directory
 from urllib.parse import urlparse, parse_qs, urljoin
@@ -10,8 +11,25 @@ from flask_wtf import CSRFProtect
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user, UserMixin
 
 BASE_DIR = os.path.dirname(__file__)
-UPLOAD_FOLDER = os.path.join(BASE_DIR, 'static', 'uploads')
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+# Prefer an explicit environment override for upload path (useful in production)
+_static_upload = os.path.join(BASE_DIR, 'static', 'uploads')
+UPLOAD_FOLDER = os.environ.get('UPLOAD_FOLDER')
+
+if not UPLOAD_FOLDER:
+    # Try to use the repo's static/uploads for local/dev. If that's read-only
+    # (serverless), fall back to the system temp directory which is writable.
+    try:
+        os.makedirs(_static_upload, exist_ok=True)
+        UPLOAD_FOLDER = _static_upload
+    except OSError:
+        UPLOAD_FOLDER = os.path.join(tempfile.gettempdir(), 'riseup_uploads')
+        try:
+            os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+        except Exception:
+            # Best-effort only: if even /tmp can't be created, keep the path
+            # and let file operations handle runtime errors instead of crashing
+            # at import time.
+            pass
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(BASE_DIR, 'riseup.db')
