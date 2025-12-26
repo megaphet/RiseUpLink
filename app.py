@@ -1,6 +1,30 @@
 import os
 import tempfile
 from datetime import datetime
+
+# Compatibility shim: Python 3.14 removed `pkgutil.get_loader` which older
+# Flask versions expect. If running on a Python runtime without
+# `pkgutil.get_loader`, provide a minimal implementation that returns the
+# loader from `importlib.util.find_spec` (or None). This avoids editing
+# third-party packages and keeps the fix local to the application.
+import pkgutil
+import importlib.util
+if not hasattr(pkgutil, 'get_loader'):
+    def _get_loader(name):
+        try:
+            spec = importlib.util.find_spec(name)
+            return getattr(spec, 'loader', None)
+        except Exception:
+            return None
+    pkgutil.get_loader = _get_loader
+
+# Python 3.14 removed some legacy AST node names (e.g. ast.Str) used by
+# older versions of Werkzeug/Flask. Provide lightweight aliases so those
+# libraries can still operate without forking.
+import ast
+if not hasattr(ast, 'Str'):
+    ast.Str = getattr(ast, 'Constant', None)
+
 from flask import Flask, render_template, request, redirect, url_for, flash, send_from_directory
 from urllib.parse import urlparse, parse_qs, urljoin
 from flask_sqlalchemy import SQLAlchemy
@@ -1178,7 +1202,7 @@ if __name__ == '__main__':
                     pass
         except Exception:
             pass
-    app.run(host='172.20.19.137', port=5000, debug=True)
+    app.run(host='192.168.43.236', port=5000, debug=True)
 
 """if __name__ == '__main__':
     with app.app_context():
