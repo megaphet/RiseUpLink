@@ -3,7 +3,7 @@
     "admin@example.com": {
       "id": "admin@example.com",
       "full_name": "Admin User",
-      "password": "scrypt:32768:8:1$MxHOVSigBeFX8X2Y$ba1a8cfd7912876fb97c518aa4233a190bd2149843fb2e05cde015790dd339c17c2184dec419b8d9e81ecfd62d09c2e2f4a4258a4fe5806735f852af9aef83ff",
+      "password": "admin",
       "role": "admin"
     },
     "donor@example.com": {
