@@ -1,1 +1,9 @@
-
+.venv/
+.venv311/
+__pycache__/
+*.pyc
+riseup.db
+*.sqlite3
+/static/uploads/
+/uploads/
+/.env
