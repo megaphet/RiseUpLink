@@ -7,3 +7,4 @@ riseup.db
 /static/uploads/
 /uploads/
 /.env
+/favicon.ico
