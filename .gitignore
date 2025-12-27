@@ -6,3 +6,4 @@ riseup.db
 *.sqlite3
 /static/uploads/
 /uploads/
+.env
