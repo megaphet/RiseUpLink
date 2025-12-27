@@ -1,8 +1,8 @@
 import os
 import tempfile
 from datetime import datetime
-#from dotenv import load_dotenv
-#load_dotenv()
+from dotenv import load_dotenv
+load_dotenv()
 
 
 # Compatibility shim: Python 3.14 removed `pkgutil.get_loader` which older
