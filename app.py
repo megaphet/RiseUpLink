@@ -112,7 +112,16 @@ from email.message import EmailMessage
 
 @login_manager.user_loader
 def load_user(user_id):
-    return User.query.get(int(user_id))
+    try:
+        # Use Session.get() which is the supported pattern for SQLAlchemy 1.x+ / 2.0
+        return db.session.get(User, int(user_id))
+    except Exception:
+        # Fallback to the older Query.get() for environments where session.get
+        # isn't available (keeps backward compatibility).
+        try:
+            return User.query.get(int(user_id))
+        except Exception:
+            return None
 
 
 def is_safe_url(target):
@@ -123,6 +132,17 @@ def is_safe_url(target):
         return test_url.scheme in ("http", "https") and ref_url.netloc == test_url.netloc
     except Exception:
         return False
+
+
+@app.route('/favicon.ico')
+def favicon():
+    # Serve a small SVG favicon from the static uploads directory to avoid
+    # repeated 404s when browsers request /favicon.ico.
+    try:
+        return send_from_directory(os.path.join(app.root_path, 'static', 'uploads'), 'favicon.svg', mimetype='image/svg+xml')
+    except Exception:
+        # If serving fails, return empty 204 so client stops requesting.
+        return ('', 204)
 
 @app.route('/')
 def index():
