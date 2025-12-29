@@ -9,5 +9,9 @@ Werkzeug==2.2.3
 requests==2.31.0
 Flask-WTF==1.1.1
 Flask-Migrate==3.1.0
+<<<<<<< HEAD
 psycopg2-binary==2.9.9
 
+=======
+psycopg2-binary==2.9.9
+>>>>>>> 6cdd6e9 (Update app logic, .env, and dependencies)
