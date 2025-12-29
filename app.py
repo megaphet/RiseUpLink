@@ -1,8 +1,15 @@
 import os
 import tempfile
 from datetime import datetime
-from dotenv import load_dotenv
-load_dotenv()
+"""#from dotenv import load_dotenv
+#load_dotenv()"""
+import logging
+
+try:
+    from dotenv import load_dotenv
+    load_dotenv() # load .env if python-doteenv is installed (useful in local dev)
+except ImportError:
+    logging.info("python-dotenv not installed; skipping loading .env (use Vercel env vars in production)")
 
 
 # Compatibility shim: Python 3.14 removed `pkgutil.get_loader` which older
