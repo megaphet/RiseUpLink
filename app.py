@@ -33,9 +33,13 @@ if not hasattr(pkgutil, 'get_loader'):
 # libraries can still operate without forking.
 import ast
 if not hasattr(ast, 'Str'):
-    ast.Str = getattr(ast, 'Constant', None)
+    class _StrShim:
+        def __init__(self, s):
+            self.s = s
+    ast.Str = _StrShim
 
 from flask import Flask, render_template, request, redirect, url_for, flash, send_from_directory
+import sys
 from urllib.parse import urlparse, parse_qs, urljoin
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -45,6 +49,12 @@ from flask_wtf import CSRFProtect
 from flask_login import LoginManager, login_user, logout_user, login_required, current_user, UserMixin
 
 BASE_DIR = os.path.dirname(__file__)
+# Supabase HTTP config: when both vars are present the app will prefer
+# using the Supabase HTTP API (supabase-py) instead of opening a direct
+# Postgres/TCP connection from serverless hosts like Vercel.
+SUPABASE_URL = os.environ.get('SUPABASE_URL')
+SUPABASE_KEY = os.environ.get('SUPABASE_KEY')
+USE_SUPABASE = bool(SUPABASE_URL and SUPABASE_KEY)
 # Prefer an explicit environment override for upload path (useful in production)
 _static_upload = os.path.join(BASE_DIR, 'static', 'uploads')
 UPLOAD_FOLDER = os.environ.get('UPLOAD_FOLDER')
@@ -65,7 +75,11 @@ if not UPLOAD_FOLDER:
             # at import time.
             pass
 
-app = Flask(__name__)
+# Preserve older behavior for Python < 3.14 (keep static folder enabled)
+if sys.version_info >= (3, 14):
+    app = Flask(__name__, static_folder=None)
+else:
+    app = Flask(__name__)
 # Determine DB URI: prefer env var `DATABASE_URL` or `SQLALCHEMY_DATABASE_URI`.
 # If none provided, attempt to use a writable sqlite file in the repo; if
 # that's not writable (serverless), fall back to a tmp sqlite file, then
@@ -96,9 +110,27 @@ app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 # Import models which create the `db` instance, then initialize it with `app`.
 import models
 db = models.db
-db.init_app(app)
+# When Supabase HTTP API is in use, avoid initializing SQLAlchemy with the
+# app and skip creating tables — this prevents the app from attempting to
+# open a direct Postgres/TCP connection (psycopg2) in serverless envs.
+if not USE_SUPABASE:
+    db.init_app(app)
+else:
+    app.logger.info('Supabase configured; skipping SQLAlchemy app initialization')
 
-migrate = Migrate(app, db)
+# Import optional Supabase helper (provides HTTP-based DB access when
+# `SUPABASE_URL` + `SUPABASE_KEY` are set). This module is a lightweight
+# shim used for specific DB-backed operations that need to avoid direct
+# Postgres TCP connections in serverless environments.
+try:
+    import supabase_client
+except Exception:
+    supabase_client = None
+
+if not USE_SUPABASE:
+    migrate = Migrate(app, db)
+else:
+    migrate = None
 csrf = CSRFProtect(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
@@ -106,20 +138,47 @@ login_manager.login_view = 'login'
 # Auto-initialize database tables when running in environments where
 # migrations are not applied (serverless deployments). Controlled by
 # `AUTO_INIT_DB` env var; set to '0' in production to disable.
-if os.environ.get('AUTO_INIT_DB', '1') != '0':
+if not USE_SUPABASE and os.environ.get('AUTO_INIT_DB', '1') != '0':
     try:
         with app.app_context():
             db.create_all()
     except Exception as _e:
         app.logger.warning('AUTO_INIT_DB: failed to create tables: %s', _e)
+elif USE_SUPABASE:
+    app.logger.info('AUTO_INIT_DB skipped because Supabase is enabled')
 
 from models import User, YouthProfile, Document, RecommendationLetter, Verification, FieldVisit, Opportunity, Application, Notification, YouTubeVideo
 import smtplib
 from email.message import EmailMessage
+from werkzeug.security import generate_password_hash, check_password_hash
 
 @login_manager.user_loader
 def load_user(user_id):
     try:
+        # If Supabase is configured, load user via HTTP API
+        if USE_SUPABASE and supabase_client:
+            u = supabase_client.get_user_by_id(int(user_id))
+            if not u:
+                return None
+            # Simple User-like object for Flask-Login
+            class SupabaseUser(UserMixin):
+                def __init__(self, data):
+                    self.id = data.get('id')
+                    self.email = data.get('email')
+                    self.full_name = data.get('full_name')
+                    self.phone_number = data.get('phone_number')
+                    self.whatsapp_number = data.get('whatsapp_number')
+                    self.preferred_contact = data.get('preferred_contact')
+                    self.role = data.get('role')
+                    self.password_hash = data.get('password_hash')
+
+                def check_password(self, pw):
+                    try:
+                        return check_password_hash(self.password_hash, pw)
+                    except Exception:
+                        return False
+
+            return SupabaseUser(u)
         # Use Session.get() which is the supported pattern for SQLAlchemy 1.x+ / 2.0
         return db.session.get(User, int(user_id))
     except Exception:
@@ -179,9 +238,14 @@ def media():
     # try DB-backed YouTube videos first
     main_video = None
     try:
-        mv = YouTubeVideo.query.filter_by(is_main=True).first()
-        if mv:
-            main_video = {'id': mv.id, 'title': mv.title, 'description': mv.description, 'link': mv.link, 'youtube_id': mv.youtube_id, 'is_main': mv.is_main}
+        if USE_SUPABASE and supabase_client:
+            mv = supabase_client.get_main_youtube_video()
+            if mv:
+                main_video = {'id': mv.get('id'), 'title': mv.get('title'), 'description': mv.get('description'), 'link': mv.get('link'), 'youtube_id': mv.get('youtube_id'), 'is_main': mv.get('is_main')}
+        else:
+            mv = YouTubeVideo.query.filter_by(is_main=True).first()
+            if mv:
+                main_video = {'id': mv.id, 'title': mv.title, 'description': mv.description, 'link': mv.link, 'youtube_id': mv.youtube_id, 'is_main': mv.is_main}
     except Exception:
         main_video = None
 
@@ -264,15 +328,25 @@ def admin_media():
     # Load YouTube videos from DB (fall back to JSON)
     youtube_videos = []
     try:
-        for yv in YouTubeVideo.query.order_by(YouTubeVideo.created_at.desc()).all():
-            youtube_videos.append({'id': yv.id, 'title': yv.title, 'description': yv.description, 'link': yv.link, 'youtube_id': yv.youtube_id, 'is_main': yv.is_main})
-        # fallback to legacy JSON if none in DB
-        if not youtube_videos:
-            try:
-                with open(yt_path, 'r', encoding='utf-8') as f:
-                    youtube_videos = json.load(f)
-            except Exception:
-                youtube_videos = []
+        if USE_SUPABASE and supabase_client:
+            rows = supabase_client.list_youtube_videos()
+            for yv in rows:
+                youtube_videos.append({'id': yv.get('id'), 'title': yv.get('title'), 'description': yv.get('description'), 'link': yv.get('link'), 'youtube_id': yv.get('youtube_id'), 'is_main': yv.get('is_main')})
+            if not youtube_videos:
+                try:
+                    with open(yt_path, 'r', encoding='utf-8') as f:
+                        youtube_videos = json.load(f)
+                except Exception:
+                    youtube_videos = []
+        else:
+            for yv in YouTubeVideo.query.order_by(YouTubeVideo.created_at.desc()).all():
+                youtube_videos.append({'id': yv.id, 'title': yv.title, 'description': yv.description, 'link': yv.link, 'youtube_id': yv.youtube_id, 'is_main': yv.is_main})
+            if not youtube_videos:
+                try:
+                    with open(yt_path, 'r', encoding='utf-8') as f:
+                        youtube_videos = json.load(f)
+                except Exception:
+                    youtube_videos = []
     except Exception:
         youtube_videos = []
 
@@ -312,30 +386,55 @@ def admin_update_video(vid):
     link = request.form.get('link', '')
     # update DB-backed YouTubeVideo when present
     try:
-        yv = YouTubeVideo.query.get(int(vid))
-        if not yv:
-            flash('Video not found', 'warning')
-            return redirect(url_for('admin_media'))
-        yv.title = title
-        yv.description = description
-        yv.link = link
-        # update youtube_id when link changes
-        try:
-            yid = None
-            parsed = urlparse(link)
-            if parsed.hostname and 'youtu' in parsed.hostname:
-                qs = parse_qs(parsed.query)
-                if 'v' in qs:
-                    yid = qs['v'][0]
-                else:
-                    parts = parsed.path.split('/')
-                    if parts:
-                        yid = parts[-1]
-            yv.youtube_id = yid
-        except Exception:
-            pass
-        db.session.commit()
-        flash('Video updated', 'success')
+        if USE_SUPABASE and supabase_client:
+            existing = supabase_client.get_youtube_video(int(vid))
+            if not existing:
+                flash('Video not found', 'warning')
+                return redirect(url_for('admin_media'))
+            updates = {'title': title, 'description': description, 'link': link}
+            # update youtube_id when link changes
+            try:
+                yid = None
+                parsed = urlparse(link)
+                if parsed.hostname and 'youtu' in parsed.hostname:
+                    qs = parse_qs(parsed.query)
+                    if 'v' in qs:
+                        yid = qs['v'][0]
+                    else:
+                        parts = parsed.path.split('/')
+                        if parts:
+                            yid = parts[-1]
+                updates['youtube_id'] = yid
+            except Exception:
+                pass
+            supabase_client.update_youtube_video(int(vid), updates)
+        else:
+            yv = YouTubeVideo.query.get(int(vid))
+            if not yv:
+                flash('Video not found', 'warning')
+                return redirect(url_for('admin_media'))
+            yv.title = title
+            yv.description = description
+            yv.link = link
+            try:
+                yid = None
+                parsed = urlparse(link)
+                if parsed.hostname and 'youtu' in parsed.hostname:
+                    qs = parse_qs(parsed.query)
+                    if 'v' in qs:
+                        yid = qs['v'][0]
+                    else:
+                        parts = parsed.path.split('/')
+                        if parts:
+                            yid = parts[-1]
+                yv.youtube_id = yid
+            except Exception:
+                pass
+        if not (USE_SUPABASE and supabase_client):
+            db.session.commit()
+            flash('Video updated', 'success')
+        else:
+            flash('Video updated', 'success')
     except Exception:
         flash('Failed to update video', 'warning')
     return redirect(url_for('admin_media'))
@@ -348,10 +447,14 @@ def delete_video(vid):
         flash('Admin only', 'danger')
         return redirect(url_for('dashboard'))
     try:
-        yv = YouTubeVideo.query.get_or_404(int(vid))
-        db.session.delete(yv)
-        db.session.commit()
-        flash('Video deleted', 'success')
+        if USE_SUPABASE and supabase_client:
+            supabase_client.delete_youtube_video(int(vid))
+            flash('Video deleted', 'success')
+        else:
+            yv = YouTubeVideo.query.get_or_404(int(vid))
+            db.session.delete(yv)
+            db.session.commit()
+            flash('Video deleted', 'success')
     except Exception:
         flash('Failed to delete video', 'warning')
     return redirect(url_for('admin_media'))
@@ -384,20 +487,29 @@ def admin_add_video():
     # set is_main True if no main exists yet
     is_main = False
     try:
-        if YouTubeVideo.query.filter_by(is_main=True).count() == 0:
-            is_main = True
+        if USE_SUPABASE and supabase_client:
+            rows = supabase_client.list_youtube_videos()
+            if not any(r.get('is_main') for r in rows):
+                is_main = True
+        else:
+            if YouTubeVideo.query.filter_by(is_main=True).count() == 0:
+                is_main = True
     except Exception:
         is_main = False
 
     try:
-        if is_main:
-            # ensure only one main
-            for other in YouTubeVideo.query.filter_by(is_main=True).all():
-                other.is_main = False
-        yv = YouTubeVideo(youtube_id=yid, title=title, description=description, link=link, is_main=is_main)
-        db.session.add(yv)
-        db.session.commit()
-        flash('YouTube video added', 'success')
+        if USE_SUPABASE and supabase_client:
+            new = {'youtube_id': yid, 'title': title, 'description': description, 'link': link, 'is_main': is_main}
+            supabase_client.add_youtube_video(new)
+            flash('YouTube video added', 'success')
+        else:
+            if is_main:
+                for other in YouTubeVideo.query.filter_by(is_main=True).all():
+                    other.is_main = False
+            yv = YouTubeVideo(youtube_id=yid, title=title, description=description, link=link, is_main=is_main)
+            db.session.add(yv)
+            db.session.commit()
+            flash('YouTube video added', 'success')
     except Exception as e:
         app.logger.warning('Failed to add YouTube video: %s', e)
         flash('Failed to add video', 'danger')
@@ -411,13 +523,26 @@ def admin_mark_main(vid):
         flash('Admin only', 'danger')
         return redirect(url_for('dashboard'))
     try:
-        # clear existing main flags
-        for v in YouTubeVideo.query.filter_by(is_main=True).all():
-            v.is_main = False
-        yv = YouTubeVideo.query.get_or_404(int(vid))
-        yv.is_main = True
-        db.session.commit()
-        flash('Main video updated', 'success')
+        if USE_SUPABASE and supabase_client:
+            # clear existing mains then set this one
+            try:
+                rows = supabase_client.list_youtube_videos()
+                for r in rows:
+                    if r.get('is_main'):
+                        supabase_client.update_youtube_video(r.get('id'), {'is_main': False})
+                supabase_client.update_youtube_video(int(vid), {'is_main': True})
+                flash('Main video updated', 'success')
+            except Exception:
+                app.logger.warning('Failed to mark main video via Supabase')
+                flash('Video not found', 'warning')
+        else:
+            # clear existing main flags
+            for v in YouTubeVideo.query.filter_by(is_main=True).all():
+                v.is_main = False
+            yv = YouTubeVideo.query.get_or_404(int(vid))
+            yv.is_main = True
+            db.session.commit()
+            flash('Main video updated', 'success')
     except Exception as e:
         app.logger.warning('Failed to mark main video: %s', e)
         flash('Video not found', 'warning')
@@ -433,25 +558,50 @@ def register():
         password = request.form['password']
         role = request.form['role']
         preferred_contact = request.form.get('preferred_contact', 'email')
-        if User.query.filter_by(email=email).first():
-            flash('Email already registered', 'danger')
-            return redirect(url_for('register', next=request.args.get('next')))
-        user = User(
-            email=email, 
-            full_name=full_name, 
-            phone_number=phone_number if phone_number else None,
-            whatsapp_number=whatsapp_number if whatsapp_number else None,
-            preferred_contact=preferred_contact,
-            role=role
-        )
-        user.set_password(password)
-        db.session.add(user)
-        db.session.commit()
-        flash('Registration successful. Please log in.', 'success')
-        next_url = request.args.get('next') or request.form.get('next')
-        if next_url:
-            return redirect(url_for('login', next=next_url))
-        return redirect(url_for('login'))
+        if USE_SUPABASE and supabase_client:
+            existing = supabase_client.get_user_by_email(email)
+            if existing:
+                flash('Email already registered', 'danger')
+                return redirect(url_for('register', next=request.args.get('next')))
+            pwd_hash = generate_password_hash(password)
+            payload = {
+                'email': email,
+                'full_name': full_name,
+                'phone_number': phone_number if phone_number else None,
+                'whatsapp_number': whatsapp_number if whatsapp_number else None,
+                'preferred_contact': preferred_contact,
+                'role': role,
+                'password_hash': pwd_hash
+            }
+            created = supabase_client.create_user(payload)
+            if not created:
+                flash('Failed to register user', 'danger')
+                return redirect(url_for('register'))
+            flash('Registration successful. Please log in.', 'success')
+            next_url = request.args.get('next') or request.form.get('next')
+            if next_url:
+                return redirect(url_for('login', next=next_url))
+            return redirect(url_for('login'))
+        else:
+            if User.query.filter_by(email=email).first():
+                flash('Email already registered', 'danger')
+                return redirect(url_for('register', next=request.args.get('next')))
+            user = User(
+                email=email, 
+                full_name=full_name, 
+                phone_number=phone_number if phone_number else None,
+                whatsapp_number=whatsapp_number if whatsapp_number else None,
+                preferred_contact=preferred_contact,
+                role=role
+            )
+            user.set_password(password)
+            db.session.add(user)
+            db.session.commit()
+            flash('Registration successful. Please log in.', 'success')
+            next_url = request.args.get('next') or request.form.get('next')
+            if next_url:
+                return redirect(url_for('login', next=next_url))
+            return redirect(url_for('login'))
     return render_template('register.html')
 
 @app.route('/login', methods=['GET', 'POST'])
@@ -459,16 +609,34 @@ def login():
     if request.method == 'POST':
         email = request.form['email']
         password = request.form['password']
-        user = User.query.filter_by(email=email).first()
-        if user and user.check_password(password):
-            login_user(user)
-            flash('Logged in', 'success')
+        if USE_SUPABASE and supabase_client:
+            u = supabase_client.get_user_by_email(email)
+            if u and check_password_hash(u.get('password_hash', ''), password):
+                class SupabaseUserLogin(UserMixin):
+                    def __init__(self, data):
+                        self.id = data.get('id')
+                        self.email = data.get('email')
+                        self.full_name = data.get('full_name')
+                        self.role = data.get('role')
+                user_obj = SupabaseUserLogin(u)
+                login_user(user_obj)
+                flash('Logged in', 'success')
+            else:
+                flash('Invalid credentials', 'danger')
+                return render_template('login.html')
+        else:
+            user = User.query.filter_by(email=email).first()
+            if user and user.check_password(password):
+                login_user(user)
+                flash('Logged in', 'success')
+            else:
+                flash('Invalid credentials', 'danger')
+                return render_template('login.html')
             # Prefer explicit `next` value if present and safe
             next_url = request.form.get('next') or request.args.get('next')
             if next_url and is_safe_url(next_url):
                 return redirect(next_url)
             return redirect(url_for('dashboard'))
-        flash('Invalid credentials', 'danger')
     return render_template('login.html')
 
 
@@ -490,18 +658,30 @@ def logout():
 def dashboard():
     role = current_user.role
     if role == 'youth':
-        profile = YouthProfile.query.filter_by(user_id=current_user.id).first()
         applications = []
-        if profile:
-            applications = Application.query.filter_by(youth_id=profile.id).all()
-        # recent opportunities and notifications for youth
-        recent_opps = Opportunity.query.filter_by(is_active=True).order_by(Opportunity.posted_at.desc()).limit(5).all()
-        unread_notifications = []
         try:
-            unread_notifications = Notification.query.filter_by(user_id=current_user.id, is_read=False).order_by(Notification.created_at.desc()).limit(10).all()
+            if USE_SUPABASE and supabase_client:
+                profile = supabase_client.get_profile_by_user_id(current_user.id)
+                if profile:
+                    applications = supabase_client.list_applications_by_youth(profile.get('id'))
+                recent_opps = supabase_client.list_opportunities(active_only=True, limit=5)
+                try:
+                    unread_notifications = [n for n in (supabase_client.list_notifications_by_user(current_user.id, limit=10) or []) if not n.get('is_read')]
+                except Exception:
+                    unread_notifications = []
+            else:
+                profile = YouthProfile.query.filter_by(user_id=current_user.id).first()
+                if profile:
+                    applications = Application.query.filter_by(youth_id=profile.id).all()
+                recent_opps = Opportunity.query.filter_by(is_active=True).order_by(Opportunity.posted_at.desc()).limit(5).all()
+                try:
+                    unread_notifications = Notification.query.filter_by(user_id=current_user.id, is_read=False).order_by(Notification.created_at.desc()).limit(10).all()
+                except Exception:
+                    unread_notifications = []
         except Exception:
-            # Notification table may not exist yet (migrations not run)
-            pass
+            profile = None
+            recent_opps = []
+            unread_notifications = []
         return render_template('dashboard_youth.html', profile=profile, applications=applications, recent_opps=recent_opps, notifications=unread_notifications)
     elif role == 'donor':
         opportunities = Opportunity.query.filter_by(posted_by=current_user.id).all()
@@ -528,17 +708,29 @@ def create_profile():
         community = request.form['community']
         whatsapp_number = request.form.get('whatsapp_number', '')
         preferred_feedback = request.form.get('preferred_feedback', 'email')
-        profile = YouthProfile(
-            user_id=current_user.id, 
-            category=category, 
-            country=country, 
-            community=community,
-            whatsapp_number=whatsapp_number if whatsapp_number else None,
-            preferred_feedback=preferred_feedback,
-            profile_completed=True
-        )
-        db.session.add(profile)
-        db.session.commit()
+        if USE_SUPABASE and supabase_client:
+            payload = {
+                'user_id': current_user.id,
+                'category': category,
+                'country': country,
+                'community': community,
+                'whatsapp_number': whatsapp_number if whatsapp_number else None,
+                'preferred_feedback': preferred_feedback,
+                'profile_completed': True
+            }
+            supabase_client.create_profile(payload)
+        else:
+            profile = YouthProfile(
+                user_id=current_user.id, 
+                category=category, 
+                country=country, 
+                community=community,
+                whatsapp_number=whatsapp_number if whatsapp_number else None,
+                preferred_feedback=preferred_feedback,
+                profile_completed=True
+            )
+            db.session.add(profile)
+            db.session.commit()
         try:
             from notifications import create_in_app_notification
             create_in_app_notification(current_user.id, 'Profile created', 'Your youth profile was created successfully.')
@@ -604,7 +796,10 @@ def upload_documents():
     if current_user.role != 'youth':
         flash('Only youth can upload documents', 'danger')
         return redirect(url_for('dashboard'))
-    profile = YouthProfile.query.filter_by(user_id=current_user.id).first()
+    if USE_SUPABASE and supabase_client:
+        profile = supabase_client.get_profile_by_user_id(current_user.id)
+    else:
+        profile = YouthProfile.query.filter_by(user_id=current_user.id).first()
     if not profile:
         flash('Create profile first', 'warning')
         return redirect(url_for('create_profile'))
@@ -615,18 +810,29 @@ def upload_documents():
             filename = f"{current_user.id}_{int(datetime.utcnow().timestamp())}_{file.filename}"
             path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
             file.save(path)
-            doc = Document(youth_id=profile.id, type=dtype, file_url=filename, uploaded_at=datetime.utcnow(), validated=False)
-            db.session.add(doc)
-            db.session.commit()
-            try:
-                from notifications import create_in_app_notification
-                create_in_app_notification(current_user.id, 'Document uploaded', f'Your document "{filename}" was uploaded and is awaiting validation.', link=url_for('upload_documents'))
-            except Exception:
-                pass
+            if USE_SUPABASE and supabase_client:
+                supabase_client.add_document({'youth_id': profile.get('id'), 'type': dtype, 'file_url': filename, 'uploaded_at': datetime.utcnow().isoformat(), 'validated': False})
+                try:
+                    supabase_client.create_notification({'user_id': current_user.id, 'title': 'Document uploaded', 'message': f'Your document "{filename}" was uploaded and is awaiting validation.', 'link': url_for('upload_documents')})
+                except Exception:
+                    pass
+            else:
+                doc = Document(youth_id=profile.id, type=dtype, file_url=filename, uploaded_at=datetime.utcnow(), validated=False)
+                db.session.add(doc)
+                db.session.commit()
+                try:
+                    from notifications import create_in_app_notification
+                    create_in_app_notification(current_user.id, 'Document uploaded', f'Your document "{filename}" was uploaded and is awaiting validation.', link=url_for('upload_documents'))
+                except Exception:
+                    pass
             flash('Document uploaded', 'success')
             return redirect(url_for('upload_documents'))
-    docs = Document.query.filter_by(youth_id=profile.id).all()
-    recs = RecommendationLetter.query.filter_by(youth_id=profile.id).all()
+    if USE_SUPABASE and supabase_client:
+        docs = supabase_client.list_documents_by_youth(profile.get('id'))
+        recs = supabase_client.list_recommendations_by_youth(profile.get('id'))
+    else:
+        docs = Document.query.filter_by(youth_id=profile.id).all()
+        recs = RecommendationLetter.query.filter_by(youth_id=profile.id).all()
     return render_template('upload_documents.html', docs=docs, recs=recs)
 
 @app.route('/recommendation/upload', methods=['POST'])
@@ -635,7 +841,10 @@ def upload_recommendation():
     if current_user.role != 'youth':
         flash('Only youth can upload recommendation letters', 'danger')
         return redirect(url_for('dashboard'))
-    profile = YouthProfile.query.filter_by(user_id=current_user.id).first()
+    if USE_SUPABASE and supabase_client:
+        profile = supabase_client.get_profile_by_user_id(current_user.id)
+    else:
+        profile = YouthProfile.query.filter_by(user_id=current_user.id).first()
     if not profile:
         flash('Create profile first', 'warning')
         return redirect(url_for('create_profile'))
@@ -647,9 +856,12 @@ def upload_recommendation():
         filename = f"{current_user.id}_rec_{int(datetime.utcnow().timestamp())}_{file.filename}"
         path = os.path.join(app.config['UPLOAD_FOLDER'], filename)
         file.save(path)
-        rec = RecommendationLetter(youth_id=profile.id, issuer_name=issuer, issuer_role=issuer_role, contact_info=contact, file_url=filename, uploaded_at=datetime.utcnow(), validated=False)
-        db.session.add(rec)
-        db.session.commit()
+        if USE_SUPABASE and supabase_client:
+            supabase_client.add_recommendation({'youth_id': profile.get('id'), 'issuer_name': issuer, 'issuer_role': issuer_role, 'contact_info': contact, 'file_url': filename, 'uploaded_at': datetime.utcnow().isoformat(), 'validated': False})
+        else:
+            rec = RecommendationLetter(youth_id=profile.id, issuer_name=issuer, issuer_role=issuer_role, contact_info=contact, file_url=filename, uploaded_at=datetime.utcnow(), validated=False)
+            db.session.add(rec)
+            db.session.commit()
         try:
             from notifications import create_in_app_notification
             create_in_app_notification(current_user.id, 'Recommendation uploaded', f'Recommendation from {issuer} uploaded and awaiting review.', link=url_for('upload_documents'))
@@ -740,22 +952,43 @@ def list_opportunities():
     otype = request.args.get('type')
     country = request.args.get('country')
     category = request.args.get('category')
-    q = Opportunity.query.filter_by(is_active=True)
-    if otype:
-        q = q.filter(Opportunity.type.ilike(f"%{otype}%"))
-    if country:
-        q = q.filter(Opportunity.country.ilike(f"%{country}%"))
-    if category:
-        q = q.filter(Opportunity.category_target.ilike(f"%{category}%"))
-    opportunities = q.all()
+    # Fetch opportunities via Supabase when configured, otherwise ORM
+    opportunities = []
+    try:
+        if USE_SUPABASE and supabase_client:
+            opportunities = supabase_client.list_opportunities(active_only=True)
+            # apply simple filters in Python
+            if otype:
+                opportunities = [o for o in opportunities if o.get('type') and o.get('type').lower().find(otype.lower()) != -1]
+            if country:
+                opportunities = [o for o in opportunities if o.get('country') and o.get('country').lower().find(country.lower()) != -1]
+            if category:
+                opportunities = [o for o in opportunities if o.get('category_target') and o.get('category_target').lower().find(category.lower()) != -1]
+        else:
+            q = Opportunity.query.filter_by(is_active=True)
+            if otype:
+                q = q.filter(Opportunity.type.ilike(f"%{otype}%"))
+            if country:
+                q = q.filter(Opportunity.country.ilike(f"%{country}%"))
+            if category:
+                q = q.filter(Opportunity.category_target.ilike(f"%{category}%"))
+            opportunities = q.all()
+    except Exception:
+        opportunities = []
     # If the viewer is a youth, build a map of their applications by opportunity id
     applications_map = {}
     if current_user.is_authenticated and getattr(current_user, 'role', None) == 'youth':
         try:
-            profile = YouthProfile.query.filter_by(user_id=current_user.id).first()
-            if profile:
-                apps = Application.query.filter_by(youth_id=profile.id).all()
-                applications_map = {a.opportunity_id: a for a in apps}
+            if USE_SUPABASE and supabase_client:
+                profile = supabase_client.get_profile_by_user_id(current_user.id)
+                if profile:
+                    apps = supabase_client.list_applications_by_youth(profile.get('id'))
+                    applications_map = {a.get('opportunity_id'): a for a in apps}
+            else:
+                profile = YouthProfile.query.filter_by(user_id=current_user.id).first()
+                if profile:
+                    apps = Application.query.filter_by(youth_id=profile.id).all()
+                    applications_map = {a.opportunity_id: a for a in apps}
         except Exception:
             applications_map = {}
 
@@ -774,11 +1007,16 @@ def post_opportunity():
         category = request.form.get('category')
         deadline = request.form.get('deadline')
         desc = request.form.get('description')
-        opp = Opportunity(title=title, type=otype, country=country, category_target=category, description=desc, posted_at=datetime.utcnow(), deadline=deadline, posted_by=current_user.id, is_active=True)
-        db.session.add(opp)
-        db.session.commit()
-        flash('Opportunity posted', 'success')
-        return redirect(url_for('dashboard'))
+        if USE_SUPABASE and supabase_client:
+            supabase_client.add_opportunity({'title': title, 'type': otype, 'country': country, 'category_target': category, 'description': desc, 'posted_at': datetime.utcnow().isoformat(), 'deadline': deadline, 'posted_by': current_user.id, 'is_active': True})
+            flash('Opportunity posted', 'success')
+            return redirect(url_for('dashboard'))
+        else:
+            opp = Opportunity(title=title, type=otype, country=country, category_target=category, description=desc, posted_at=datetime.utcnow(), deadline=deadline, posted_by=current_user.id, is_active=True)
+            db.session.add(opp)
+            db.session.commit()
+            flash('Opportunity posted', 'success')
+            return redirect(url_for('dashboard'))
     return render_template('post_opportunity.html')
 
 @app.route('/opportunity/<int:oid>/apply', methods=['POST'])
@@ -787,40 +1025,67 @@ def apply_opportunity(oid):
     if current_user.role != 'youth':
         flash('Only youth can apply', 'danger')
         return redirect(url_for('list_opportunities'))
-    profile = YouthProfile.query.filter_by(user_id=current_user.id).first()
-    if not profile:
-        flash('Complete profile first', 'warning')
-        return redirect(url_for('create_profile'))
-    # Eligibility rules (revised):
-    # - Verified OR
-    # - PendingField (waiting for field visit) OR
-    # - Profile completed AND at least one validated document
-    v = Verification.query.filter_by(youth_id=profile.id).order_by(Verification.started_at.desc()).first()
-    eligible = False
-    if v and v.status in ('Verified', 'PendingField'):
-        eligible = True
-    else:
-        try:
-            validated_docs = Document.query.filter_by(youth_id=profile.id, validated=True).count()
-        except Exception:
-            validated_docs = 0
-        if profile.profile_completed and validated_docs > 0:
+    if USE_SUPABASE and supabase_client:
+        profile = supabase_client.get_profile_by_user_id(current_user.id)
+        if not profile:
+            flash('Complete profile first', 'warning')
+            return redirect(url_for('create_profile'))
+        v = supabase_client.get_latest_verification_by_youth(profile.get('id'))
+        eligible = False
+        if v and v.get('status') in ('Verified', 'PendingField'):
             eligible = True
+        else:
+            try:
+                validated_docs = [d for d in (supabase_client.list_documents_by_youth(profile.get('id')) or []) if d.get('validated')]
+                validated_docs_count = len(validated_docs)
+            except Exception:
+                validated_docs_count = 0
+            if profile.get('profile_completed') and validated_docs_count > 0:
+                eligible = True
 
-    if not eligible:
-        flash('You must have a Verified profile (or PendingField) or a completed profile with at least one validated document to apply. Submit for verification if needed.', 'warning')
+        if not eligible:
+            flash('You must have a Verified profile (or PendingField) or a completed profile with at least one validated document to apply. Submit for verification if needed.', 'warning')
+            return redirect(url_for('dashboard'))
+
+        created = supabase_client.add_application({'opportunity_id': oid, 'youth_id': profile.get('id'), 'submitted_at': datetime.utcnow().isoformat(), 'status': 'Submitted'})
+        try:
+            opp = supabase_client.get_opportunity_by_id(oid)
+            supabase_client.create_notification({'user_id': current_user.id, 'title': 'Application submitted', 'message': f'Your application for "{opp.get("title") if opp else oid}" was submitted.', 'link': url_for('dashboard')})
+        except Exception:
+            pass
+        flash('Application submitted', 'success')
         return redirect(url_for('dashboard'))
+    else:
+        profile = YouthProfile.query.filter_by(user_id=current_user.id).first()
+        if not profile:
+            flash('Complete profile first', 'warning')
+            return redirect(url_for('create_profile'))
+        v = Verification.query.filter_by(youth_id=profile.id).order_by(Verification.started_at.desc()).first()
+        eligible = False
+        if v and v.status in ('Verified', 'PendingField'):
+            eligible = True
+        else:
+            try:
+                validated_docs = Document.query.filter_by(youth_id=profile.id, validated=True).count()
+            except Exception:
+                validated_docs = 0
+            if profile.profile_completed and validated_docs > 0:
+                eligible = True
 
-    appn = Application(opportunity_id=oid, youth_id=profile.id, submitted_at=datetime.utcnow(), status='Submitted')
-    db.session.add(appn)
-    db.session.commit()
-    try:
-        from notifications import create_in_app_notification
-        create_in_app_notification(current_user.id, 'Application submitted', f'Your application for "{opp.title if (opp:=Opportunity.query.get(oid)) else oid}" was submitted.', link=url_for('dashboard'))
-    except Exception:
-        pass
-    flash('Application submitted', 'success')
-    return redirect(url_for('dashboard'))
+        if not eligible:
+            flash('You must have a Verified profile (or PendingField) or a completed profile with at least one validated document to apply. Submit for verification if needed.', 'warning')
+            return redirect(url_for('dashboard'))
+
+        appn = Application(opportunity_id=oid, youth_id=profile.id, submitted_at=datetime.utcnow(), status='Submitted')
+        db.session.add(appn)
+        db.session.commit()
+        try:
+            from notifications import create_in_app_notification
+            create_in_app_notification(current_user.id, 'Application submitted', f'Your application for "{opp.title if (opp:=Opportunity.query.get(oid)) else oid}" was submitted.', link=url_for('dashboard'))
+        except Exception:
+            pass
+        flash('Application submitted', 'success')
+        return redirect(url_for('dashboard'))
 
 
 @app.route('/donor/search_youth', methods=['GET'])
@@ -1209,11 +1474,20 @@ def handle_uncaught_exception(e):
     return "Internal Server Error", 500
 
 if __name__ == '__main__':
-    with app.app_context():
-        db.create_all()
-        # One-time migration: import legacy youtube_videos.json into DB if table empty
-        try:
-            if YouTubeVideo.query.count() == 0:
+    # Only create local DB tables when not using Supabase (avoids remote Postgres connections)
+    if not USE_SUPABASE:
+        with app.app_context():
+            db.create_all()
+
+    # One-time migration: import legacy youtube_videos.json into DB (or Supabase) if table empty
+    try:
+        with app.app_context():
+            if USE_SUPABASE and supabase_client:
+                rows = supabase_client.list_youtube_videos()
+                is_empty = not bool(rows)
+            else:
+                is_empty = (YouTubeVideo.query.count() == 0)
+            if is_empty:
                 yt_path = os.path.join(BASE_DIR, 'youtube_videos.json')
                 import json
                 try:
@@ -1222,17 +1496,25 @@ if __name__ == '__main__':
                     for v in vids:
                         try:
                             yid = v.get('youtube_id')
-                            yv = YouTubeVideo(youtube_id=yid, title=v.get('title'), description=v.get('description'), link=v.get('link'), is_main=bool(v.get('is_main')))
-                            db.session.add(yv)
+                            if USE_SUPABASE and supabase_client:
+                                supabase_client.add_youtube_video({'youtube_id': yid, 'title': v.get('title'), 'description': v.get('description'), 'link': v.get('link'), 'is_main': bool(v.get('is_main'))})
+                            else:
+                                yv = YouTubeVideo(youtube_id=yid, title=v.get('title'), description=v.get('description'), link=v.get('link'), is_main=bool(v.get('is_main')))
+                                db.session.add(yv)
                         except Exception:
                             continue
-                    db.session.commit()
-                    app.logger.info('Imported legacy YouTube videos into DB')
+                    if not (USE_SUPABASE and supabase_client):
+                        db.session.commit()
+                        app.logger.info('Imported legacy YouTube videos into DB')
+                    else:
+                        app.logger.info('Imported legacy YouTube videos into Supabase')
                 except Exception:
                     pass
-        except Exception:
-            pass
-    app.run(host='192.168.43.236', port=5000, debug=True)
+    except Exception:
+        pass
+
+    # Bind to localhost so smoke/functional tests can connect to 127.0.0.1
+    app.run(host='127.0.0.1', port=5000, debug=True)
 
 """if __name__ == '__main__':
     with app.app_context():
