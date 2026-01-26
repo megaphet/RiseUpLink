@@ -1513,11 +1513,10 @@ if __name__ == '__main__':
     except Exception:
         pass
 
-    # Bind to localhost so smoke/functional tests can connect to 127.0.0.1
-    # Note: app.run() is commented out for Vercel deployment
-    # Vercel will run the Flask app instance directly as a WSGI application
-    # For local development, use: vercel dev
-    # app.run(host='127.0.0.1', port=5000, debug=True)
+    # Bind to 0.0.0.0 to allow access from localhost and other computers on the local network
+    # 0.0.0.0 listens on all available network interfaces
+    # For Vercel deployment, this block is skipped (Vercel imports app directly as WSGI)
+    app.run(host='0.0.0.0', port=5000, debug=True)
 
 """if __name__ == '__main__':
     with app.app_context():
