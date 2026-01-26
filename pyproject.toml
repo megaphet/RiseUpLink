@@ -1,0 +1,9 @@
+[project]
+name = "riseuplink"
+description = "DengRiseUp RiseUpLink Flask application"
+
+[tool.vercel.scripts]
+build = "pip install -r requirements.txt"
+
+[project.scripts]
+app = "app:app"

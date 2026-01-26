@@ -1,5 +1,4 @@
 {
-  "buildCommand": "pip install -r requirements.txt",
   "framework": "flask",
   "python": "3.11"
 }
