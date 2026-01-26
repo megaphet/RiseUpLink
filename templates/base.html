@@ -56,6 +56,32 @@
       </div>
     </nav>
     <div class="container">
+      <div id="devAlert" class="alert alert-warning alert-dismissible fade show" role="alert" style="position: relative; overflow: hidden;">
+        <div style="position: absolute; bottom: 0; left: 0; height: 3px; background-color: #ff9800; width: 100%; animation: shrink 10s linear forwards;" id="progressBar"></div>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        <strong>Development Version:</strong> This is a development version of RiseUpLink, some features may not work properly.
+      </div>
+      <style>
+        @keyframes shrink {
+          from {
+            width: 100%;
+          }
+          to {
+            width: 0%;
+          }
+        }
+      </style>
+      <script>
+        document.addEventListener('DOMContentLoaded', function() {
+          const alert = document.getElementById('devAlert');
+          if (alert) {
+            setTimeout(function() {
+              const bsAlert = new bootstrap.Alert(alert);
+              bsAlert.close();
+            }, 10000);
+          }
+        });
+      </script>
       {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
           {% for category, msg in messages %}
