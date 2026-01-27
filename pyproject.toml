@@ -1,5 +1,6 @@
 [project]
 name = "riseuplink"
+version = "1.0.0"
 description = "DengRiseUp RiseUpLink Flask application"
 
 [tool.vercel.scripts]
