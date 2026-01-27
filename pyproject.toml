@@ -21,5 +21,8 @@ dependencies = [
 requires = ["setuptools", "wheel"]
 build-backend = "setuptools.build_meta"
 
+[tool.setuptools]
+packages = []
+
 [tool.vercel.scripts]
 build = "pip install -r requirements.txt"
