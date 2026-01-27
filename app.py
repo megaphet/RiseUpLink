@@ -1476,8 +1476,12 @@ def handle_uncaught_exception(e):
 if __name__ == '__main__':
     # Only create local DB tables when not using Supabase (avoids remote Postgres connections)
     if not USE_SUPABASE:
-        with app.app_context():
-            db.create_all()
+        try:
+            with app.app_context():
+                db.create_all()
+        except Exception as e:
+            # If database connection fails (e.g., no internet), log and continue
+            app.logger.warning(f"Failed to initialize database tables: {e}. App will run without database features.")
 
     # One-time migration: import legacy youtube_videos.json into DB (or Supabase) if table empty
     try:
@@ -1516,7 +1520,7 @@ if __name__ == '__main__':
     # Bind to 0.0.0.0 to allow access from localhost and other computers on the local network
     # 0.0.0.0 listens on all available network interfaces
     # For Vercel deployment, this block is skipped (Vercel imports app directly as WSGI)
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='192.168.43.236', port=5000, debug=True)
 
 """if __name__ == '__main__':
     with app.app_context():
